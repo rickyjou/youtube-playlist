@@ -96,25 +96,36 @@
         let playListElement = document.getElementById('play-list');
 
         function updatePlayList() {
-        let totalTime = 0;
-        playListElement.innerHTML = '';
-        for (let i = 0; i < playList.length; i++) { const startTime=parseInt(playList[i].start); const
-            endTime=parseInt(playList[i].end); totalTime +=endTime - startTime; if (currentId==i)
-            playListElement.innerHTML +=`<p>* ${i + 1}. ${playList[i].videoId}: ${formatTime(playList[i].start)} -
+            let totalTime = 0;
+            playListElement.innerHTML = '';
+            for (let i = 0; i < playList.length; i++) {
+                const startTime = parseInt(playList[i].start);
+                const
+                    endTime = parseInt(playList[i].end);
+                totalTime += endTime - startTime;
+                if (currentId == i)
+                    playListElement.innerHTML += `<p>* ${i + 1}. ${playList[i].videoId}: ${formatTime(playList[i].start)} -
             ${formatTime(playList[i].end)}</p>`;
-            else
-            playListElement.innerHTML += `<p> ${i + 1}. ${playList[i].videoId}: ${formatTime(playList[i].start)} -
+                else
+                    playListElement.innerHTML += `<p> ${i + 1}. ${playList[i].videoId}: ${formatTime(playList[i].start)} -
                 ${formatTime(playList[i].end)}</p>`;
             }
             const totalMinutes = Math.floor(totalTime / 60);
             const totalSeconds = totalTime % 60;
             playListElement.innerHTML += `<p>Total Time: ${totalMinutes} minutes ${totalSeconds} seconds</p>`;
-            }
+            // Calculate when to start the playlist
+            const startHourSeconds = 3600 - totalTime; // 1 hour = 3600 seconds
+            const startMinutes = Math.floor(startHourSeconds / 60);
+            const startSeconds = startHourSeconds % 60;
+            const formattedStartTime = `${startMinutes}:${startSeconds < 10 ? '0' + startSeconds : startSeconds}`;
+            playListElement.innerHTML += `<p>Start Playlist at: ${formattedStartTime} to finish at the hour.</p>`;
+        }
 
-            function formatTime(seconds) {
+        function formatTime(seconds) {
             const minutes = Math.floor(seconds / 60);
             const remainingSeconds = seconds % 60;
-            return `${minutes}:${remainingSeconds < 10 ? '0' + remainingSeconds : remainingSeconds}`; }
+            return `${minutes}:${remainingSeconds < 10 ? '0' + remainingSeconds : remainingSeconds}`;
+        }
 
 
 
