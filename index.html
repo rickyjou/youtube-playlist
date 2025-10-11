@@ -208,21 +208,47 @@
         addForm.addEventListener('submit', function (event) {
             event.preventDefault();
             let videoLink = document.getElementById('youtube-link').value;
-            let startTimeHour = parseInt(document.getElementById('add-form').elements['start-time-hour'].value)
-            let startTimeMinute = parseInt(document.getElementById('add-form').elements['start-time-minute']
-                .value)
-            let startTimeSecond = parseInt(document.getElementById('add-form').elements['start-time-second']
-                .value)
-            let endTimeHour = parseInt(document.getElementById('add-form').elements['end-time-hour'].value)
-            let endTimeMinute = parseInt(document.getElementById('add-form').elements['end-time-minute'].value)
-            let endTimeSecond = parseInt(document.getElementById('add-form').elements['end-time-second'].value)
+            
+            // Parse time inputs with default value of 0 if empty or invalid
+            let startTimeHour = parseInt(document.getElementById('add-form').elements['start-time-hour'].value) || 0;
+            let startTimeMinute = parseInt(document.getElementById('add-form').elements['start-time-minute'].value) || 0;
+            let startTimeSecond = parseInt(document.getElementById('add-form').elements['start-time-second'].value) || 0;
+            let endTimeHour = parseInt(document.getElementById('add-form').elements['end-time-hour'].value) || 0;
+            let endTimeMinute = parseInt(document.getElementById('add-form').elements['end-time-minute'].value) || 0;
+            let endTimeSecond = parseInt(document.getElementById('add-form').elements['end-time-second'].value) || 0;
+            
+            // Calculate total seconds
+            let startSeconds = startTimeHour * 3600 + startTimeMinute * 60 + startTimeSecond;
+            let endSeconds = endTimeHour * 3600 + endTimeMinute * 60 + endTimeSecond;
+            
+            // Validate video link
+            if (!videoLink || !videoLink.includes('v=')) {
+                alert('Please enter a valid YouTube link with v= parameter');
+                return;
+            }
+            
+            // Validate end time is after start time
+            if (endSeconds <= startSeconds) {
+                alert('End time must be after start time');
+                return;
+            }
+            
             playList.push({
-                videoId: videoLink.split('v=')[1],
-                start: startTimeHour * 60 * 60 + startTimeMinute * 60 + startTimeSecond,
-                end: endTimeHour * 60 * 60 + endTimeMinute * 60 + endTimeSecond
+                videoId: videoLink.split('v=')[1].split('&')[0], // Extract video ID and remove any additional parameters
+                start: startSeconds,
+                end: endSeconds
             });
             textarea.value = JSON.stringify(playList);
             updatePlayList();
+            
+            // Clear the form after adding
+            document.getElementById('youtube-link').value = '';
+            document.getElementById('add-form').elements['start-time-hour'].value = '0';
+            document.getElementById('add-form').elements['start-time-minute'].value = '0';
+            document.getElementById('add-form').elements['start-time-second'].value = '0';
+            document.getElementById('add-form').elements['end-time-hour'].value = '0';
+            document.getElementById('add-form').elements['end-time-minute'].value = '0';
+            document.getElementById('add-form').elements['end-time-second'].value = '0';
         });
     </script>
 </body>
