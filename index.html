@@ -48,6 +48,11 @@
             <br>
             <button id="update-button">Update and Play from beginning</button>
             <button id="reset-button">Reset and Remove All Videos</button>
+            <button id="share-button">Generate Shareable Link</button>
+            <div id="share-link-container" style="display: none; margin-top: 10px;">
+                <input type="text" id="share-link" readonly style="width: 500px;">
+                <button id="copy-link-button">Copy Link</button>
+            </div>
         </section>
         <form id="add-form">
             <h1>Add New Video Clip:</h1>
@@ -67,7 +72,26 @@
     </section>
 
     <script id="youtube-tracking-script">
-        let playList = [{
+        // Check if there's a playlist in the URL
+        function loadPlaylistFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const playlistParam = urlParams.get('playlist');
+            
+            if (playlistParam) {
+                try {
+                    // Decode the base64 encoded playlist
+                    const decodedPlaylist = atob(playlistParam);
+                    return JSON.parse(decodedPlaylist);
+                } catch (e) {
+                    console.error('Error loading playlist from URL:', e);
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        // Initialize playlist from URL or use default
+        let playList = loadPlaylistFromURL() || [{
                 videoId: '6MTbZBg9pQc',
                 start: 0,
                 end: 761
@@ -113,6 +137,39 @@
                     player.stopVideo();
                 }
             }
+        });
+
+        let shareButton = document.getElementById('share-button');
+        let shareLinkContainer = document.getElementById('share-link-container');
+        let shareLinkInput = document.getElementById('share-link');
+        let copyLinkButton = document.getElementById('copy-link-button');
+
+        shareButton.addEventListener('click', function (event) {
+            // Encode the playlist as base64
+            const playlistJSON = JSON.stringify(playList);
+            const encodedPlaylist = btoa(playlistJSON);
+            
+            // Generate the shareable URL
+            const baseURL = window.location.origin + window.location.pathname;
+            const shareableURL = `${baseURL}?playlist=${encodedPlaylist}`;
+            
+            // Display the link
+            shareLinkInput.value = shareableURL;
+            shareLinkContainer.style.display = 'block';
+        });
+
+        copyLinkButton.addEventListener('click', function (event) {
+            shareLinkInput.select();
+            shareLinkInput.setSelectionRange(0, 99999); // For mobile devices
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(shareLinkInput.value).then(function() {
+                alert('Link copied to clipboard!');
+            }).catch(function(err) {
+                // Fallback for older browsers
+                document.execCommand('copy');
+                alert('Link copied to clipboard!');
+            });
         });
 
         let playListElement = document.getElementById('play-list');
