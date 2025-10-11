@@ -262,9 +262,18 @@
         }
 
         const addForm = document.getElementById('add-form');
-        addForm.addEventListener('submit', function (event) {
+        addForm.addEventListener('submit', async function (event) {
             event.preventDefault();
             let videoLink = document.getElementById('youtube-link').value;
+            
+            // Validate video link
+            if (!videoLink || !videoLink.includes('v=')) {
+                alert('Please enter a valid YouTube link with v= parameter');
+                return;
+            }
+            
+            // Extract video ID
+            const videoId = videoLink.split('v=')[1].split('&')[0];
             
             // Parse time inputs with default value of 0 if empty or invalid
             let startTimeHour = parseInt(document.getElementById('add-form').elements['start-time-hour'].value) || 0;
@@ -278,20 +287,57 @@
             let startSeconds = startTimeHour * 3600 + startTimeMinute * 60 + startTimeSecond;
             let endSeconds = endTimeHour * 3600 + endTimeMinute * 60 + endTimeSecond;
             
-            // Validate video link
-            if (!videoLink || !videoLink.includes('v=')) {
-                alert('Please enter a valid YouTube link with v= parameter');
-                return;
-            }
-            
-            // Validate end time is after start time
+            // If end time is 0 or not after start time, fetch video duration
             if (endSeconds <= startSeconds) {
-                alert('End time must be after start time');
-                return;
+                try {
+                    // Create a temporary player to get video duration
+                    const tempDiv = document.createElement('div');
+                    tempDiv.id = 'temp-player';
+                    tempDiv.style.display = 'none';
+                    document.body.appendChild(tempDiv);
+                    
+                    // Wait for video to load and get duration
+                    const duration = await new Promise((resolve, reject) => {
+                        const tempPlayer = new YT.Player('temp-player', {
+                            height: '1',
+                            width: '1',
+                            videoId: videoId,
+                            events: {
+                                'onReady': function(event) {
+                                    const dur = event.target.getDuration();
+                                    event.target.destroy();
+                                    document.body.removeChild(tempDiv);
+                                    resolve(Math.floor(dur));
+                                },
+                                'onError': function(event) {
+                                    event.target.destroy();
+                                    document.body.removeChild(tempDiv);
+                                    reject(new Error('Could not load video'));
+                                }
+                            }
+                        });
+                        
+                        // Timeout after 10 seconds
+                        setTimeout(() => {
+                            if (tempPlayer) {
+                                tempPlayer.destroy();
+                                document.body.removeChild(tempDiv);
+                                reject(new Error('Timeout loading video'));
+                            }
+                        }, 10000);
+                    });
+                    
+                    endSeconds = duration;
+                    console.log(`Auto-detected video duration: ${duration} seconds`);
+                } catch (error) {
+                    console.error('Error fetching video duration:', error);
+                    alert('Could not automatically detect video duration. Please enter an end time manually.');
+                    return;
+                }
             }
             
             playList.push({
-                videoId: videoLink.split('v=')[1].split('&')[0], // Extract video ID and remove any additional parameters
+                videoId: videoId,
                 start: startSeconds,
                 end: endSeconds
             });
