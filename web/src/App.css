@@ -119,3 +119,7 @@ body {
   padding: 6px 10px;
   min-width: 34px;
 }
+
+.shared-clock {
+  font-variant-numeric: tabular-nums;
+}

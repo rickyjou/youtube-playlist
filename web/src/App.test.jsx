@@ -40,6 +40,35 @@ describe('App', () => {
     expect(screen.getByTestId('player')).toHaveTextContent('shared1')
   })
 
+  it('shows only the player, total time, and clock for a shared playlist, hiding all editing controls', () => {
+    const shared = [{ videoId: 'shared1', start: 0, end: 20 }]
+    const encoded = btoa(JSON.stringify(shared))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+
+    render(<App />)
+
+    expect(screen.getByText('Total time: 0:20')).toBeInTheDocument()
+    expect(screen.getByText(/Current time:/)).toBeInTheDocument()
+    expect(screen.getByText(/Starts in:/)).toBeInTheDocument()
+    expect(screen.queryByText('Delete')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/start/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/end/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('YouTube link')).not.toBeInTheDocument()
+    expect(screen.queryByText('Generate Shareable Link')).not.toBeInTheDocument()
+    expect(screen.queryByText('Show advanced JSON editor')).not.toBeInTheDocument()
+  })
+
+  it('shows the full editor (start/end fields, delete, share, add) for the default non-shared playlist', () => {
+    render(<App />)
+
+    expect(screen.getAllByLabelText('Start')).not.toHaveLength(0)
+    expect(screen.getAllByLabelText('End')).not.toHaveLength(0)
+    expect(screen.getAllByText('Delete')).not.toHaveLength(0)
+    expect(screen.getByLabelText('YouTube link')).toBeInTheDocument()
+    expect(screen.getByText('Generate Shareable Link')).toBeInTheDocument()
+    expect(screen.getByText('Show advanced JSON editor')).toBeInTheDocument()
+  })
+
   it('advances to the next clip when the player reports the current clip ended', () => {
     render(<App />)
     expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')

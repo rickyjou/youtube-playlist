@@ -4,7 +4,9 @@ import PlaylistView from './components/PlaylistView.jsx'
 import AddClipInput from './components/AddClipInput.jsx'
 import RawJsonPanel from './components/RawJsonPanel.jsx'
 import ShareLink from './components/ShareLink.jsx'
+import SharedClock from './components/SharedClock.jsx'
 import { decodePlaylistFromUrl } from './lib/shareUrl.js'
+import { formatTime, calculateTotalSeconds } from './lib/time.js'
 
 const DEFAULT_PLAYLIST = [
   { videoId: '6MTbZBg9pQc', start: 0, end: 761 },
@@ -26,6 +28,7 @@ export default function App() {
   const [playlist, setPlaylist] = useState(
     () => decodePlaylistFromUrl(window.location.search) ?? DEFAULT_PLAYLIST,
   )
+  const [isSharedView] = useState(() => decodePlaylistFromUrl(window.location.search) != null)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [metadata, setMetadata] = useState({})
   const [theme, setTheme] = useState(getStoredTheme)
@@ -123,17 +126,26 @@ export default function App() {
           onEnded={handleEnded}
         />
       )}
-      <PlaylistView
-        playlist={playlist}
-        currentIndex={currentIndex}
-        metadata={metadata}
-        onUpdateClip={handleUpdateClip}
-        onDeleteClip={handleDeleteClip}
-        onMoveClip={handleMoveClip}
-      />
-      <AddClipInput apiKey={API_KEY} onAddClips={handleAddClips} onLoadPlaylist={handleLoadPlaylist} />
-      <ShareLink playlist={playlist} />
-      <RawJsonPanel playlist={playlist} onReplacePlaylist={handleReplacePlaylist} onReset={handleReset} />
+      {isSharedView ? (
+        <>
+          <SharedClock totalSeconds={calculateTotalSeconds(playlist)} />
+          <p>Total time: {formatTime(calculateTotalSeconds(playlist))}</p>
+        </>
+      ) : (
+        <>
+          <PlaylistView
+            playlist={playlist}
+            currentIndex={currentIndex}
+            metadata={metadata}
+            onUpdateClip={handleUpdateClip}
+            onDeleteClip={handleDeleteClip}
+            onMoveClip={handleMoveClip}
+          />
+          <AddClipInput apiKey={API_KEY} onAddClips={handleAddClips} onLoadPlaylist={handleLoadPlaylist} />
+          <ShareLink playlist={playlist} />
+          <RawJsonPanel playlist={playlist} onReplacePlaylist={handleReplacePlaylist} onReset={handleReset} />
+        </>
+      )}
     </div>
   )
 }
