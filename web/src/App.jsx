@@ -107,9 +107,25 @@ export default function App() {
     setCurrentIndex((current) => current + 1)
   }
 
+  function handleNext() {
+    setCurrentIndex((current) => (current + 1) % playlist.length)
+  }
+
+  function handlePrevious() {
+    setCurrentIndex((current) => (current - 1 + playlist.length) % playlist.length)
+  }
+
   const currentClip = playlist[currentIndex]
   const effectiveTheme = getEffectiveTheme(theme)
   const totalSeconds = calculateTotalSeconds(playlist)
+  const player = currentClip && (
+    <YouTubePlayer
+      videoId={currentClip.videoId}
+      start={currentClip.start}
+      end={currentClip.end}
+      onEnded={handleEnded}
+    />
+  )
 
   return (
     <div>
@@ -127,21 +143,35 @@ export default function App() {
         </button>
       </div>
       <h1>YouTube Playlist Duration Calculator & Player</h1>
-      {currentClip && (
-        <YouTubePlayer
-          videoId={currentClip.videoId}
-          start={currentClip.start}
-          end={currentClip.end}
-          onEnded={handleEnded}
-        />
-      )}
       {isSharedView ? (
         <>
+          {player && (
+            <div className="player-wrapper">
+              {player}
+              <button
+                type="button"
+                className="player-nav player-nav-prev"
+                onClick={handlePrevious}
+                aria-label="Previous clip"
+              >
+                ◀
+              </button>
+              <button
+                type="button"
+                className="player-nav player-nav-next"
+                onClick={handleNext}
+                aria-label="Next clip"
+              >
+                ▶
+              </button>
+            </div>
+          )}
           <SharedClock totalSeconds={totalSeconds} />
           <p>Total time: {formatTime(totalSeconds)}</p>
         </>
       ) : (
         <>
+          {player}
           <PlaylistView
             playlist={playlist}
             currentIndex={currentIndex}

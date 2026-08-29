@@ -123,3 +123,45 @@ body {
 .shared-clock {
   font-variant-numeric: tabular-nums;
 }
+
+.player-wrapper {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.player-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--transition);
+}
+
+.player-nav:hover {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.player-nav:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.player-nav-prev {
+  left: 12px;
+}
+
+.player-nav-next {
+  right: 12px;
+}

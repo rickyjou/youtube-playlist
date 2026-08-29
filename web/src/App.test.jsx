@@ -74,6 +74,46 @@ describe('App', () => {
     expect(screen.getByText('Show advanced JSON editor')).toBeInTheDocument()
   })
 
+  it('does not show prev/next clip buttons in the default non-shared editing view', () => {
+    render(<App />)
+
+    expect(screen.queryByLabelText('Previous clip')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Next clip')).not.toBeInTheDocument()
+  })
+
+  it('advances to the next clip and wraps to the first when Next is clicked past the last clip in shared view', () => {
+    const shared = [
+      { videoId: 'sharedvid01', start: 0, end: 20 },
+      { videoId: 'sharedvid02', start: 0, end: 30 },
+    ]
+    const encoded = btoa(JSON.stringify(shared))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+
+    render(<App />)
+    expect(screen.getByTestId('player')).toHaveTextContent('sharedvid01')
+
+    fireEvent.click(screen.getByLabelText('Next clip'))
+    expect(screen.getByTestId('player')).toHaveTextContent('sharedvid02')
+
+    fireEvent.click(screen.getByLabelText('Next clip'))
+    expect(screen.getByTestId('player')).toHaveTextContent('sharedvid01')
+  })
+
+  it('goes to the previous clip and wraps to the last when Previous is clicked before the first clip in shared view', () => {
+    const shared = [
+      { videoId: 'sharedvid01', start: 0, end: 20 },
+      { videoId: 'sharedvid02', start: 0, end: 30 },
+    ]
+    const encoded = btoa(JSON.stringify(shared))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+
+    render(<App />)
+    expect(screen.getByTestId('player')).toHaveTextContent('sharedvid01')
+
+    fireEvent.click(screen.getByLabelText('Previous clip'))
+    expect(screen.getByTestId('player')).toHaveTextContent('sharedvid02')
+  })
+
   it('advances to the next clip when the player reports the current clip ended', () => {
     render(<App />)
     expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
