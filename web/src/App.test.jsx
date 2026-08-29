@@ -1,5 +1,5 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { describe, it, expect, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { vi } from 'vitest'
 import App from './App.jsx'
 import * as youtubeApi from './lib/youtubeApi.js'
@@ -18,6 +18,10 @@ vi.mock('./lib/youtubeApi.js')
 describe('App', () => {
   beforeEach(() => {
     window.history.pushState({}, '', '/')
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('renders the page heading', () => {
@@ -98,6 +102,32 @@ describe('App', () => {
     fireEvent.click(screen.getByLabelText('Enter fullscreen'))
 
     expect(requestFullscreen).toHaveBeenCalledTimes(1)
+  })
+
+  it('hides the fullscreen toggle after inactivity in fullscreen, and shows it again on mouse movement', () => {
+    const shared = [{ videoId: 'sharedvid01', start: 0, end: 20 }]
+    const encoded = btoa(JSON.stringify(shared))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+    HTMLElement.prototype.requestFullscreen = vi.fn()
+
+    vi.useFakeTimers()
+    const { container } = render(<App />)
+    const wrapper = container.querySelector('.player-wrapper')
+
+    Object.defineProperty(document, 'fullscreenElement', { value: wrapper, configurable: true })
+    fireEvent(document, new Event('fullscreenchange'))
+
+    expect(wrapper.className).not.toContain('controls-hidden')
+
+    act(() => {
+      vi.advanceTimersByTime(2500)
+    })
+    expect(wrapper.className).toContain('controls-hidden')
+
+    fireEvent.mouseMove(wrapper)
+    expect(wrapper.className).not.toContain('controls-hidden')
+
+    vi.useRealTimers()
   })
 
   it('switches to Exit fullscreen once fullscreen is entered, and exits it when clicked again', () => {

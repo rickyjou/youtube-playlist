@@ -39,15 +39,39 @@ export default function App() {
   const [metadata, setMetadata] = useState({})
   const [theme, setTheme] = useState(getStoredTheme)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showFullscreenControls, setShowFullscreenControls] = useState(true)
   const playerWrapperRef = useRef(null)
+  const hideControlsTimeoutRef = useRef(null)
+
+  function scheduleHideControls() {
+    setShowFullscreenControls(true)
+    clearTimeout(hideControlsTimeoutRef.current)
+    hideControlsTimeoutRef.current = setTimeout(() => setShowFullscreenControls(false), 2000)
+  }
 
   useEffect(() => {
     function handleFullscreenChange() {
-      setIsFullscreen(document.fullscreenElement === playerWrapperRef.current)
+      const nowFullscreen = document.fullscreenElement === playerWrapperRef.current
+      setIsFullscreen(nowFullscreen)
+      if (nowFullscreen) {
+        scheduleHideControls()
+      } else {
+        clearTimeout(hideControlsTimeoutRef.current)
+        setShowFullscreenControls(true)
+      }
     }
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    return () => clearTimeout(hideControlsTimeoutRef.current)
+  }, [])
+
+  function handlePlayerMouseMove() {
+    scheduleHideControls()
+  }
 
   useEffect(() => {
     if (theme) {
@@ -165,7 +189,11 @@ export default function App() {
       {isSharedView ? (
         <>
           {player && (
-            <div className={`player-wrapper${isFullscreen ? ' is-fullscreen' : ''}`} ref={playerWrapperRef}>
+            <div
+              className={`player-wrapper${isFullscreen ? ' is-fullscreen' : ''}${isFullscreen && !showFullscreenControls ? ' controls-hidden' : ''}`}
+              ref={playerWrapperRef}
+              onMouseMove={handlePlayerMouseMove}
+            >
               {player}
               <button
                 type="button"

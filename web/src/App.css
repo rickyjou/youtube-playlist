@@ -212,4 +212,11 @@ body {
   height: 40px;
   font-size: 16px;
   z-index: 1;
+  opacity: 1;
+  transition: opacity 300ms ease, background-color var(--transition);
+}
+
+.player-wrapper.is-fullscreen.controls-hidden .player-fullscreen-toggle {
+  opacity: 0;
+  pointer-events: none;
 }
