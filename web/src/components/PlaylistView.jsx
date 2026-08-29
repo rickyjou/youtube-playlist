@@ -30,13 +30,23 @@ export default function PlaylistView({ playlist, currentIndex, metadata, onUpdat
                   onChange={(event) => onUpdateClip(index, { start: clip.start, end: Number(event.target.value) })}
                 />
               </label>
-              <button type="button" onClick={() => onMoveClip(index, -1)} disabled={index === 0}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-icon"
+                onClick={() => onMoveClip(index, -1)}
+                disabled={index === 0}
+              >
                 ↑
               </button>
-              <button type="button" onClick={() => onMoveClip(index, 1)} disabled={index === playlist.length - 1}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-icon"
+                onClick={() => onMoveClip(index, 1)}
+                disabled={index === playlist.length - 1}
+              >
                 ↓
               </button>
-              <button type="button" onClick={() => onDeleteClip(index)}>
+              <button type="button" className="btn btn-danger" onClick={() => onDeleteClip(index)}>
                 Delete
               </button>
             </li>

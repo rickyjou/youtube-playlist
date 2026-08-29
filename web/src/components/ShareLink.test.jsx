@@ -36,6 +36,29 @@ describe('ShareLink', () => {
     )
   })
 
+  it('opens the generated link in a reusable named tab without leaking window.opener', () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => {})
+    render(<ShareLink playlist={playlist} />)
+    fireEvent.click(screen.getByText('Generate Shareable Link'))
+
+    const link = screen.getByRole('textbox').value
+    fireEvent.click(screen.getByText('Open in New Tab'))
+
+    expect(openSpy).toHaveBeenCalledWith(link, 'sharedPlaylistPreview', 'noopener,noreferrer')
+  })
+
+  it('shows an error if copying to the clipboard fails', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+      configurable: true,
+    })
+    render(<ShareLink playlist={playlist} />)
+    fireEvent.click(screen.getByText('Generate Shareable Link'))
+    fireEvent.click(screen.getByText('Copy Link'))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not copy link: denied')
+  })
+
   it('clears the generated link once the playlist prop changes', () => {
     const { rerender } = render(<ShareLink playlist={playlist} />)
     fireEvent.click(screen.getByText('Generate Shareable Link'))

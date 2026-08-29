@@ -17,11 +17,13 @@ function loadYouTubeIframeApi() {
   return iframeApiPromise
 }
 
-export default function YouTubePlayer({ videoId, start, end, onEnded }) {
+export default function YouTubePlayer({ videoId, start, end, onEnded, disableNativeFullscreen }) {
   const containerRef = useRef(null)
   const playerRef = useRef(null)
   const clipRef = useRef({ videoId, start, end })
   clipRef.current = { videoId, start, end }
+  const hasEndedRef = useRef(false)
+  const loadedAtRef = useRef(0)
 
   useEffect(() => {
     let cancelled = false
@@ -30,6 +32,7 @@ export default function YouTubePlayer({ videoId, start, end, onEnded }) {
 
     loadYouTubeIframeApi().then((YT) => {
       if (cancelled) return
+      loadedAtRef.current = Date.now()
       playerRef.current = new YT.Player(mountPoint, {
         height: '500',
         width: '1000',
@@ -37,10 +40,13 @@ export default function YouTubePlayer({ videoId, start, end, onEnded }) {
         playerVars: {
           start: clipRef.current.start,
           end: clipRef.current.end,
+          ...(disableNativeFullscreen ? { fs: 0 } : {}),
         },
         events: {
           onStateChange: (event) => {
-            if (event.data === YT.PlayerState.ENDED) {
+            const spurious = Date.now() - loadedAtRef.current < 1500
+            if (event.data === YT.PlayerState.ENDED && !hasEndedRef.current && !spurious) {
+              hasEndedRef.current = true
               onEnded()
             }
           },
@@ -56,6 +62,8 @@ export default function YouTubePlayer({ videoId, start, end, onEnded }) {
   }, [])
 
   useEffect(() => {
+    hasEndedRef.current = false
+    loadedAtRef.current = Date.now()
     if (!playerRef.current?.loadVideoById) return
     playerRef.current.loadVideoById({
       videoId,
@@ -64,5 +72,5 @@ export default function YouTubePlayer({ videoId, start, end, onEnded }) {
     })
   }, [videoId, start, end])
 
-  return <div ref={containerRef} />
+  return <div ref={containerRef} className="player-frame" />
 }
