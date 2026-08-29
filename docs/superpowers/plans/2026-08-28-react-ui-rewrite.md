@@ -1011,19 +1011,19 @@ vi.mock('../lib/youtubeApi.js')
 describe('AddClipInput', () => {
   it('adds a single clip using the fetched duration when no end time is given', async () => {
     youtubeApi.fetchVideoMetadata.mockResolvedValue({
-      abc123: { title: 'Test', thumbnail: '', durationSeconds: 120 },
+      abc12345678: { title: 'Test', thumbnail: '', durationSeconds: 120 },
     })
     const onAddClips = vi.fn()
     render(<AddClipInput apiKey="test-key" onAddClips={onAddClips} />)
 
     fireEvent.change(screen.getByLabelText('YouTube link'), {
-      target: { value: 'https://www.youtube.com/watch?v=abc123' },
+      target: { value: 'https://www.youtube.com/watch?v=abc12345678' },
     })
     fireEvent.click(screen.getByText('Add'))
 
     await waitFor(() => expect(onAddClips).toHaveBeenCalledWith(
-      [{ videoId: 'abc123', start: 0, end: 120 }],
-      { abc123: { title: 'Test', thumbnail: '', durationSeconds: 120 } },
+      [{ videoId: 'abc12345678', start: 0, end: 120 }],
+      { abc12345678: { title: 'Test', thumbnail: '', durationSeconds: 120 } },
     ))
   })
 
