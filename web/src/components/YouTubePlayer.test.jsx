@@ -9,7 +9,7 @@ describe('YouTubePlayer', () => {
   beforeEach(() => {
     PlayerMock = vi.fn().mockImplementation(function (element, config) {
       this.config = config
-      this.loadVideoById = vi.fn()
+      this.cueVideoById = vi.fn()
       this.destroy = vi.fn()
     })
     window.YT = {
@@ -45,14 +45,14 @@ describe('YouTubePlayer', () => {
     expect(config.playerVars).toEqual({ start: 5, end: 50, fs: 0 })
   })
 
-  it('calls loadVideoById instead of recreating the player when the clip changes', async () => {
+  it('calls cueVideoById instead of recreating the player when the clip changes', async () => {
     const { rerender } = render(<YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} />)
     await waitFor(() => expect(PlayerMock).toHaveBeenCalledTimes(1))
 
     rerender(<YouTubePlayer videoId="xyz789" start={0} end={30} onEnded={() => {}} />)
 
     const instance = PlayerMock.mock.instances[0]
-    await waitFor(() => expect(instance.loadVideoById).toHaveBeenCalledWith({
+    await waitFor(() => expect(instance.cueVideoById).toHaveBeenCalledWith({
       videoId: 'xyz789',
       startSeconds: 0,
       endSeconds: 30,
@@ -110,7 +110,7 @@ describe('YouTubePlayer', () => {
 
     rerender(<YouTubePlayer videoId="xyz789" start={0} end={30} onEnded={onEnded} />)
     const instance = PlayerMock.mock.instances[0]
-    await waitFor(() => expect(instance.loadVideoById).toHaveBeenCalledWith({
+    await waitFor(() => expect(instance.cueVideoById).toHaveBeenCalledWith({
       videoId: 'xyz789',
       startSeconds: 0,
       endSeconds: 30,

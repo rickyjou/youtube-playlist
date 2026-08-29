@@ -45,6 +45,58 @@ body {
   font-weight: bold;
 }
 
+.playlist-view ol {
+  list-style-position: inside;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.playlist-view li {
+  padding: 4px 0;
+}
+
+.clip-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.clip-row img {
+  flex: 0 0 auto;
+  border-radius: 4px;
+}
+
+.clip-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clip-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.clip-field input {
+  width: 64px;
+}
+
+.clip-actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
 .top-bar {
   display: flex;
   align-items: center;
