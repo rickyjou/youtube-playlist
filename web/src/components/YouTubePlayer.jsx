@@ -25,10 +25,12 @@ export default function YouTubePlayer({ videoId, start, end, onEnded }) {
 
   useEffect(() => {
     let cancelled = false
+    const mountPoint = document.createElement('div')
+    containerRef.current.appendChild(mountPoint)
 
     loadYouTubeIframeApi().then((YT) => {
       if (cancelled) return
-      playerRef.current = new YT.Player(containerRef.current, {
+      playerRef.current = new YT.Player(mountPoint, {
         height: '500',
         width: '1000',
         videoId: clipRef.current.videoId,
