@@ -49,6 +49,12 @@ export default function App() {
     setMetadata((current) => ({ ...current, ...newMetadata }))
   }
 
+  function handleLoadPlaylist(newClips, newMetadata) {
+    setPlaylist(newClips)
+    setMetadata((current) => ({ ...current, ...newMetadata }))
+    setCurrentIndex(0)
+  }
+
   function handleUpdateClip(index, changes) {
     setPlaylist((current) =>
       current.map((clip, i) => (i === index ? { ...clip, ...changes } : clip)),
@@ -125,7 +131,7 @@ export default function App() {
         onDeleteClip={handleDeleteClip}
         onMoveClip={handleMoveClip}
       />
-      <AddClipInput apiKey={API_KEY} onAddClips={handleAddClips} />
+      <AddClipInput apiKey={API_KEY} onAddClips={handleAddClips} onLoadPlaylist={handleLoadPlaylist} />
       <ShareLink playlist={playlist} />
       <RawJsonPanel playlist={playlist} onReplacePlaylist={handleReplacePlaylist} onReset={handleReset} />
     </div>

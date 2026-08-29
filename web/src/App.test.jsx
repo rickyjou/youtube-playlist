@@ -1,7 +1,8 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { vi } from 'vitest'
 import App from './App.jsx'
+import * as youtubeApi from './lib/youtubeApi.js'
 
 vi.mock('./components/YouTubePlayer.jsx', () => ({
   default: ({ videoId, onEnded }) => (
@@ -11,6 +12,8 @@ vi.mock('./components/YouTubePlayer.jsx', () => ({
     </div>
   ),
 }))
+
+vi.mock('./lib/youtubeApi.js')
 
 describe('App', () => {
   beforeEach(() => {
@@ -76,6 +79,39 @@ describe('App', () => {
 
     fireEvent.click(screen.getAllByText('↓')[0])
 
+    expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+  })
+
+  it('replaces the whole playlist and resets to the first clip when a playlist link is submitted', async () => {
+    youtubeApi.fetchPlaylistVideoIds.mockResolvedValue(['newVid'])
+    youtubeApi.fetchVideoMetadata.mockResolvedValue({
+      newVid: { title: 'New', thumbnail: '', durationSeconds: 42 },
+    })
+    render(<App />)
+    expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+
+    fireEvent.change(screen.getByLabelText('YouTube link'), {
+      target: { value: 'https://www.youtube.com/playlist?list=PLxyz' },
+    })
+    fireEvent.click(screen.getByText('Add'))
+
+    await waitFor(() => expect(screen.getByTestId('player')).toHaveTextContent('newVid'))
+    expect(screen.queryByText('6MTbZBg9pQc')).not.toBeInTheDocument()
+  })
+
+  it('appends a single video to the existing playlist when a video link is submitted', async () => {
+    youtubeApi.fetchVideoMetadata.mockResolvedValue({
+      newVid: { title: 'New', thumbnail: '', durationSeconds: 42 },
+    })
+    render(<App />)
+    expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+
+    fireEvent.change(screen.getByLabelText('YouTube link'), {
+      target: { value: 'https://www.youtube.com/watch?v=newVid12345' },
+    })
+    fireEvent.click(screen.getByText('Add'))
+
+    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(3))
     expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
   })
 })
