@@ -19,13 +19,13 @@ export default function ShareLink({ playlist }) {
 
   return (
     <section>
-      <button type="button" onClick={handleGenerate}>
+      <button type="button" className="btn btn-primary" onClick={handleGenerate}>
         Generate Shareable Link
       </button>
       {link && (
         <div>
           <input type="text" readOnly value={link} />
-          <button type="button" onClick={handleCopy}>
+          <button type="button" className="btn btn-secondary" onClick={handleCopy}>
             Copy Link
           </button>
         </div>

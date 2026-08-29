@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import YouTubePlayer from './components/YouTubePlayer.jsx'
 import PlaylistView from './components/PlaylistView.jsx'
 import AddClipInput from './components/AddClipInput.jsx'
@@ -13,12 +13,36 @@ const DEFAULT_PLAYLIST = [
 
 const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY
 
+function prefersDarkScheme() {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
+function getStoredTheme() {
+  const stored = localStorage.getItem('theme')
+  return stored === 'light' || stored === 'dark' ? stored : null
+}
+
 export default function App() {
   const [playlist, setPlaylist] = useState(
     () => decodePlaylistFromUrl(window.location.search) ?? DEFAULT_PLAYLIST,
   )
   const [currentIndex, setCurrentIndex] = useState(0)
   const [metadata, setMetadata] = useState({})
+  const [theme, setTheme] = useState(getStoredTheme)
+
+  useEffect(() => {
+    if (theme) {
+      document.documentElement.dataset.theme = theme
+      localStorage.setItem('theme', theme)
+    } else {
+      delete document.documentElement.dataset.theme
+    }
+  }, [theme])
+
+  function handleToggleTheme() {
+    const current = theme ?? (prefersDarkScheme() ? 'dark' : 'light')
+    setTheme(current === 'dark' ? 'light' : 'dark')
+  }
 
   function handleAddClips(newClips, newMetadata) {
     setPlaylist((current) => [...current, ...newClips])
@@ -69,10 +93,21 @@ export default function App() {
   }
 
   const currentClip = playlist[currentIndex]
+  const effectiveTheme = theme ?? (prefersDarkScheme() ? 'dark' : 'light')
 
   return (
     <div>
-      <a href="https://github.com/rickyjou/youtube-playlist">Github Repository</a>
+      <div className="top-bar">
+        <a href="https://github.com/rickyjou/youtube-playlist">Github Repository</a>
+        <button
+          type="button"
+          className="btn btn-secondary btn-icon"
+          onClick={handleToggleTheme}
+          aria-label={effectiveTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {effectiveTheme === 'dark' ? '☀️' : '🌙'}
+        </button>
+      </div>
       <h1>YouTube Playlist Duration Calculator & Player</h1>
       {currentClip && (
         <YouTubePlayer

@@ -33,7 +33,7 @@ export default function RawJsonPanel({ playlist, onReplacePlaylist, onReset }) {
 
   return (
     <section>
-      <button type="button" onClick={() => setOpen((value) => !value)}>
+      <button type="button" className="btn btn-secondary" onClick={() => setOpen((value) => !value)}>
         {open ? 'Hide advanced JSON editor' : 'Show advanced JSON editor'}
       </button>
       {open && (
@@ -45,10 +45,10 @@ export default function RawJsonPanel({ playlist, onReplacePlaylist, onReset }) {
             onChange={(event) => setText(event.target.value)}
           />
           <br />
-          <button type="button" onClick={handleUpdate}>
+          <button type="button" className="btn btn-primary" onClick={handleUpdate}>
             Update and Play from beginning
           </button>
-          <button type="button" onClick={handleReset}>
+          <button type="button" className="btn btn-danger" onClick={handleReset}>
             Reset and Remove All Videos
           </button>
           {error && <p role="alert">{error}</p>}
