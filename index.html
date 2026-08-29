@@ -91,7 +91,8 @@
         }
 
         // Initialize playlist from URL or use default
-        let playList = loadPlaylistFromURL() || [{
+        const urlPlaylist = loadPlaylistFromURL();
+        let playList = urlPlaylist && urlPlaylist.length > 0 ? urlPlaylist : [{
                 videoId: '6MTbZBg9pQc',
                 start: 0,
                 end: 761
@@ -119,11 +120,13 @@
             }
             currentId = 0;
             updatePlayList();
-            player.loadVideoById({
-                'videoId': playList[currentId].videoId,
-                'startSeconds': playList[currentId].start,
-                'endSeconds': playList[currentId].end
-            });
+            if (playList[currentId]) {
+                player.loadVideoById({
+                    'videoId': playList[currentId].videoId,
+                    'startSeconds': playList[currentId].start,
+                    'endSeconds': playList[currentId].end
+                });
+            }
         });
 
         let resetButton = document.getElementById('reset-button');
@@ -174,6 +177,12 @@
 
         let playListElement = document.getElementById('play-list');
 
+        function escapeHtml(value) {
+            const div = document.createElement('div');
+            div.textContent = String(value);
+            return div.innerHTML;
+        }
+
         function updatePlayList() {
             let totalTime = 0;
             playListElement.innerHTML = '';
@@ -181,11 +190,12 @@
                 const startTime = parseInt(playList[i].start);
                 const endTime = parseInt(playList[i].end);
                 totalTime += endTime - startTime;
+                const videoId = escapeHtml(playList[i].videoId);
                 if (currentId == i)
-                    playListElement.innerHTML += `<p>* ${i + 1}. ${playList[i].videoId}: ${formatTime(playList[i].start)} -
+                    playListElement.innerHTML += `<p>* ${i + 1}. ${videoId}: ${formatTime(playList[i].start)} -
             ${formatTime(playList[i].end)}</p>`;
                 else
-                    playListElement.innerHTML += `<p> ${i + 1}. ${playList[i].videoId}: ${formatTime(playList[i].start)} -
+                    playListElement.innerHTML += `<p> ${i + 1}. ${videoId}: ${formatTime(playList[i].start)} -
                 ${formatTime(playList[i].end)}</p>`;
             }
             const totalMinutes = Math.floor(totalTime / 60);
@@ -216,6 +226,7 @@
         let player;
 
         function onYouTubeIframeAPIReady() {
+            if (!playList[0]) return;
             player = new YT.Player('video-youtube', {
                 height: '500px',
                 width: '1000px',
@@ -298,27 +309,30 @@
                     
                     // Wait for video to load and get duration
                     const duration = await new Promise((resolve, reject) => {
+                        let timeoutId;
                         const tempPlayer = new YT.Player('temp-player', {
                             height: '1',
                             width: '1',
                             videoId: videoId,
                             events: {
                                 'onReady': function(event) {
+                                    clearTimeout(timeoutId);
                                     const dur = event.target.getDuration();
                                     event.target.destroy();
                                     document.body.removeChild(tempDiv);
                                     resolve(Math.floor(dur));
                                 },
                                 'onError': function(event) {
+                                    clearTimeout(timeoutId);
                                     event.target.destroy();
                                     document.body.removeChild(tempDiv);
                                     reject(new Error('Could not load video'));
                                 }
                             }
                         });
-                        
+
                         // Timeout after 10 seconds
-                        setTimeout(() => {
+                        timeoutId = setTimeout(() => {
                             if (tempPlayer) {
                                 tempPlayer.destroy();
                                 document.body.removeChild(tempDiv);
