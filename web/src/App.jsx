@@ -32,8 +32,12 @@ export default function App() {
   }
 
   function handleDeleteClip(index) {
+    const newLength = playlist.length - 1
     setPlaylist((current) => current.filter((_, i) => i !== index))
-    setCurrentIndex((current) => (index < current ? current - 1 : current))
+    setCurrentIndex((current) => {
+      const next = index < current ? current - 1 : current
+      return Math.min(next, Math.max(newLength - 1, 0))
+    })
   }
 
   function handleMoveClip(index, direction) {

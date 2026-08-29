@@ -54,4 +54,19 @@ describe('App', () => {
 
     expect(screen.getByTestId('player')).toHaveTextContent('gUSWWqnOKt0')
   })
+
+  it('does not leave currentIndex out of bounds when deleting the last clip', () => {
+    render(<App />)
+    expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+
+    // Advance to the second clip (which is also the last)
+    fireEvent.click(screen.getByText('simulate ended'))
+    expect(screen.getByTestId('player')).toHaveTextContent('gUSWWqnOKt0')
+
+    // Delete the currently playing (last) clip
+    fireEvent.click(screen.getAllByText('Delete')[1])
+
+    // Should now show the remaining first clip, not disappear
+    expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+  })
 })
