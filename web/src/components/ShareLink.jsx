@@ -1,8 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { buildShareUrl } from '../lib/shareUrl.js'
 
 export default function ShareLink({ playlist }) {
   const [link, setLink] = useState('')
+
+  useEffect(() => {
+    setLink('')
+  }, [playlist])
 
   function handleGenerate() {
     const baseUrl = window.location.origin + window.location.pathname

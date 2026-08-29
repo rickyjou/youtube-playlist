@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import ShareLink from './ShareLink.jsx'
 
 const playlist = [{ videoId: 'abc123', start: 0, end: 10 }]
+const otherPlaylist = [{ videoId: 'xyz789', start: 0, end: 20 }]
 
 describe('ShareLink', () => {
   beforeEach(() => {
@@ -33,5 +34,15 @@ describe('ShareLink', () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
       expect.stringContaining(btoa(JSON.stringify(playlist))),
     )
+  })
+
+  it('clears the generated link once the playlist prop changes', () => {
+    const { rerender } = render(<ShareLink playlist={playlist} />)
+    fireEvent.click(screen.getByText('Generate Shareable Link'))
+    expect(screen.getByRole('textbox')).toBeInTheDocument()
+
+    rerender(<ShareLink playlist={otherPlaylist} />)
+
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 })
