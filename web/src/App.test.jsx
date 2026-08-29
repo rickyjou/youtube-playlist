@@ -69,4 +69,13 @@ describe('App', () => {
     // Should now show the remaining first clip, not disappear
     expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
   })
+
+  it('keeps following the currently-playing clip when it is moved down', () => {
+    render(<App />)
+    expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+
+    fireEvent.click(screen.getAllByText('↓')[0])
+
+    expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+  })
 })

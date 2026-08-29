@@ -41,13 +41,17 @@ export default function App() {
   }
 
   function handleMoveClip(index, direction) {
+    const target = index + direction
+    const inBounds = target >= 0 && target < playlist.length
     setPlaylist((current) => {
-      const target = index + direction
       if (target < 0 || target >= current.length) return current
       const next = [...current]
       ;[next[index], next[target]] = [next[target], next[index]]
       return next
     })
+    if (inBounds) {
+      setCurrentIndex((current) => (index === current ? target : current))
+    }
   }
 
   function handleReplacePlaylist(newPlaylist) {
