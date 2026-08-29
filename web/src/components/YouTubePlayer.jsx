@@ -17,7 +17,7 @@ function loadYouTubeIframeApi() {
   return iframeApiPromise
 }
 
-export default function YouTubePlayer({ videoId, start, end, onEnded }) {
+export default function YouTubePlayer({ videoId, start, end, onEnded, disableNativeFullscreen }) {
   const containerRef = useRef(null)
   const playerRef = useRef(null)
   const clipRef = useRef({ videoId, start, end })
@@ -40,6 +40,7 @@ export default function YouTubePlayer({ videoId, start, end, onEnded }) {
         playerVars: {
           start: clipRef.current.start,
           end: clipRef.current.end,
+          ...(disableNativeFullscreen ? { fs: 0 } : {}),
         },
         events: {
           onStateChange: (event) => {
@@ -71,5 +72,5 @@ export default function YouTubePlayer({ videoId, start, end, onEnded }) {
     })
   }, [videoId, start, end])
 
-  return <div ref={containerRef} />
+  return <div ref={containerRef} className="player-frame" />
 }

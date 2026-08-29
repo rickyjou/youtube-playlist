@@ -37,6 +37,14 @@ describe('YouTubePlayer', () => {
     expect(config.playerVars).toEqual({ start: 5, end: 50 })
   })
 
+  it('hides the native fullscreen button when disableNativeFullscreen is set', async () => {
+    render(<YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} disableNativeFullscreen />)
+
+    await waitFor(() => expect(PlayerMock).toHaveBeenCalledTimes(1))
+    const [, config] = PlayerMock.mock.calls[0]
+    expect(config.playerVars).toEqual({ start: 5, end: 50, fs: 0 })
+  })
+
   it('calls loadVideoById instead of recreating the player when the clip changes', async () => {
     const { rerender } = render(<YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} />)
     await waitFor(() => expect(PlayerMock).toHaveBeenCalledTimes(1))

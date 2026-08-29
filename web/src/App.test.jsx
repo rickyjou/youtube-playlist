@@ -81,6 +81,49 @@ describe('App', () => {
     expect(screen.queryByLabelText('Next clip')).not.toBeInTheDocument()
   })
 
+  it('does not show a fullscreen toggle button in the default non-shared editing view', () => {
+    render(<App />)
+
+    expect(screen.queryByLabelText(/fullscreen/i)).not.toBeInTheDocument()
+  })
+
+  it('requests fullscreen on the player wrapper when the fullscreen button is clicked in shared view', () => {
+    const shared = [{ videoId: 'sharedvid01', start: 0, end: 20 }]
+    const encoded = btoa(JSON.stringify(shared))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+    const requestFullscreen = vi.fn()
+    HTMLElement.prototype.requestFullscreen = requestFullscreen
+
+    render(<App />)
+    fireEvent.click(screen.getByLabelText('Enter fullscreen'))
+
+    expect(requestFullscreen).toHaveBeenCalledTimes(1)
+  })
+
+  it('switches to Exit fullscreen once fullscreen is entered, and exits it when clicked again', () => {
+    const shared = [{ videoId: 'sharedvid01', start: 0, end: 20 }]
+    const encoded = btoa(JSON.stringify(shared))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+    HTMLElement.prototype.requestFullscreen = vi.fn()
+    const exitFullscreen = vi.fn()
+    document.exitFullscreen = exitFullscreen
+
+    const { container } = render(<App />)
+    const wrapper = container.querySelector('.player-wrapper')
+
+    Object.defineProperty(document, 'fullscreenElement', { value: wrapper, configurable: true })
+    fireEvent(document, new Event('fullscreenchange'))
+
+    const exitButton = screen.getByLabelText('Exit fullscreen')
+    fireEvent.click(exitButton)
+    expect(exitFullscreen).toHaveBeenCalledTimes(1)
+
+    Object.defineProperty(document, 'fullscreenElement', { value: null, configurable: true })
+    fireEvent(document, new Event('fullscreenchange'))
+
+    expect(screen.getByLabelText('Enter fullscreen')).toBeInTheDocument()
+  })
+
   it('advances to the next clip and wraps to the first when Next is clicked past the last clip in shared view', () => {
     const shared = [
       { videoId: 'sharedvid01', start: 0, end: 20 },

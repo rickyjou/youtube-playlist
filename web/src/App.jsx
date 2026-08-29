@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import YouTubePlayer from './components/YouTubePlayer.jsx'
 import PlaylistView from './components/PlaylistView.jsx'
 import AddClipInput from './components/AddClipInput.jsx'
@@ -38,6 +38,16 @@ export default function App() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [metadata, setMetadata] = useState({})
   const [theme, setTheme] = useState(getStoredTheme)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const playerWrapperRef = useRef(null)
+
+  useEffect(() => {
+    function handleFullscreenChange() {
+      setIsFullscreen(document.fullscreenElement === playerWrapperRef.current)
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
 
   useEffect(() => {
     if (theme) {
@@ -115,6 +125,14 @@ export default function App() {
     setCurrentIndex((current) => (current - 1 + playlist.length) % playlist.length)
   }
 
+  function handleToggleFullscreen() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen()
+    } else {
+      playerWrapperRef.current?.requestFullscreen()
+    }
+  }
+
   const currentClip = playlist[currentIndex]
   const effectiveTheme = getEffectiveTheme(theme)
   const totalSeconds = calculateTotalSeconds(playlist)
@@ -124,6 +142,7 @@ export default function App() {
       start={currentClip.start}
       end={currentClip.end}
       onEnded={handleEnded}
+      disableNativeFullscreen={isSharedView}
     />
   )
 
@@ -146,7 +165,7 @@ export default function App() {
       {isSharedView ? (
         <>
           {player && (
-            <div className="player-wrapper">
+            <div className={`player-wrapper${isFullscreen ? ' is-fullscreen' : ''}`} ref={playerWrapperRef}>
               {player}
               <button
                 type="button"
@@ -154,7 +173,7 @@ export default function App() {
                 onClick={handlePrevious}
                 aria-label="Previous clip"
               >
-                ◀
+                {isFullscreen ? '' : '◀'}
               </button>
               <button
                 type="button"
@@ -162,7 +181,15 @@ export default function App() {
                 onClick={handleNext}
                 aria-label="Next clip"
               >
-                ▶
+                {isFullscreen ? '' : '▶'}
+              </button>
+              <button
+                type="button"
+                className="player-nav player-fullscreen-toggle"
+                onClick={handleToggleFullscreen}
+                aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+              >
+                {isFullscreen ? '⤡' : '⤢'}
               </button>
             </div>
           )}
