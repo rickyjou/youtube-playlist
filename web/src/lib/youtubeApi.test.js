@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { fetchVideoMetadata } from './youtubeApi.js'
+import { fetchVideoMetadata, fetchPlaylistVideoIds } from './youtubeApi.js'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -41,5 +41,30 @@ describe('fetchVideoMetadata', () => {
   it('throws when the API responds with an error status', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 403 }))
     await expect(fetchVideoMetadata(['abc123'], 'bad-key')).rejects.toThrow('YouTube Data API error: 403')
+  })
+})
+
+describe('fetchPlaylistVideoIds', () => {
+  it('collects video IDs across paginated responses', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          items: [{ contentDetails: { videoId: 'a' } }, { contentDetails: { videoId: 'b' } }],
+          nextPageToken: 'PAGE2',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          items: [{ contentDetails: { videoId: 'c' } }],
+        }),
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await fetchPlaylistVideoIds('PLxxxx', 'test-key')
+
+    expect(result).toEqual(['a', 'b', 'c'])
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })

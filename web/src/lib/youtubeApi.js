@@ -34,3 +34,21 @@ export async function fetchVideoMetadata(videoIds, apiKey) {
   }
   return metadata
 }
+
+export async function fetchPlaylistVideoIds(playlistId, apiKey) {
+  const videoIds = []
+  let pageToken = ''
+  do {
+    const url = `${API_BASE}/playlistItems?part=contentDetails&maxResults=50&playlistId=${playlistId}&key=${apiKey}${pageToken ? `&pageToken=${pageToken}` : ''}`
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error(`YouTube Data API error: ${response.status}`)
+    }
+    const data = await response.json()
+    for (const item of data.items) {
+      videoIds.push(item.contentDetails.videoId)
+    }
+    pageToken = data.nextPageToken ?? ''
+  } while (pageToken)
+  return videoIds
+}
