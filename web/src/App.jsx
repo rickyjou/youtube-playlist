@@ -105,8 +105,12 @@ export default function App() {
   }
 
   function handleDeleteClip(index) {
-    const newLength = playlist.length - 1
-    setPlaylist((current) => current.filter((_, i) => i !== index))
+    let newLength = playlist.length
+    setPlaylist((current) => {
+      const next = current.filter((_, i) => i !== index)
+      newLength = next.length
+      return next
+    })
     setCurrentIndex((current) => {
       const next = index < current ? current - 1 : current
       return Math.min(next, Math.max(newLength - 1, 0))
@@ -115,16 +119,15 @@ export default function App() {
 
   function handleMoveClip(index, direction) {
     const target = index + direction
-    const inBounds = target >= 0 && target < playlist.length
+    let didSwap = false
     setPlaylist((current) => {
       if (target < 0 || target >= current.length) return current
+      didSwap = true
       const next = [...current]
       ;[next[index], next[target]] = [next[target], next[index]]
       return next
     })
-    if (inBounds) {
-      setCurrentIndex((current) => (index === current ? target : current))
-    }
+    setCurrentIndex((current) => (didSwap && index === current ? target : current))
   }
 
   function handleReplacePlaylist(newPlaylist) {

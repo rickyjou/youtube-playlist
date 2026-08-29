@@ -19,7 +19,11 @@ export default function PlaylistView({ playlist, currentIndex, metadata, onUpdat
                     type="number"
                     min="0"
                     value={clip.start}
-                    onChange={(event) => onUpdateClip(index, { start: Number(event.target.value), end: clip.end })}
+                    onChange={(event) => {
+                      const value = Number(event.target.value)
+                      if (!Number.isFinite(value) || value < 0) return
+                      onUpdateClip(index, { start: value, end: clip.end })
+                    }}
                   />
                 </label>
                 <label className="clip-field">
@@ -28,7 +32,11 @@ export default function PlaylistView({ playlist, currentIndex, metadata, onUpdat
                     type="number"
                     min="0"
                     value={clip.end}
-                    onChange={(event) => onUpdateClip(index, { start: clip.start, end: Number(event.target.value) })}
+                    onChange={(event) => {
+                      const value = Number(event.target.value)
+                      if (!Number.isFinite(value) || value < 0) return
+                      onUpdateClip(index, { start: clip.start, end: value })
+                    }}
                   />
                 </label>
                 <div className="clip-actions">
