@@ -10,11 +10,12 @@ describe('YouTubePlayer', () => {
     PlayerMock = vi.fn().mockImplementation(function (element, config) {
       this.config = config
       this.cueVideoById = vi.fn()
+      this.loadVideoById = vi.fn()
       this.destroy = vi.fn()
     })
     window.YT = {
       Player: PlayerMock,
-      PlayerState: { ENDED: 0 },
+      PlayerState: { ENDED: 0, PLAYING: 1 },
     }
     now = 1_000_000
     vi.spyOn(Date, 'now').mockImplementation(() => now)
@@ -45,7 +46,7 @@ describe('YouTubePlayer', () => {
     expect(config.playerVars).toEqual({ start: 5, end: 50, fs: 0 })
   })
 
-  it('calls cueVideoById instead of recreating the player when the clip changes', async () => {
+  it('cues (rather than autoplays) a new clip before the player has ever played', async () => {
     const { rerender } = render(<YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} />)
     await waitFor(() => expect(PlayerMock).toHaveBeenCalledTimes(1))
 
@@ -57,7 +58,25 @@ describe('YouTubePlayer', () => {
       startSeconds: 0,
       endSeconds: 30,
     }))
+    expect(instance.loadVideoById).not.toHaveBeenCalled()
     expect(PlayerMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('autoplays the next clip once the player has played at least once', async () => {
+    const { rerender } = render(<YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} />)
+    await waitFor(() => expect(PlayerMock).toHaveBeenCalledTimes(1))
+
+    const [, config] = PlayerMock.mock.calls[0]
+    config.events.onStateChange({ data: window.YT.PlayerState.PLAYING })
+
+    rerender(<YouTubePlayer videoId="xyz789" start={0} end={30} onEnded={() => {}} />)
+
+    const instance = PlayerMock.mock.instances[0]
+    await waitFor(() => expect(instance.loadVideoById).toHaveBeenCalledWith({
+      videoId: 'xyz789',
+      startSeconds: 0,
+      endSeconds: 30,
+    }))
   })
 
   it('calls onEnded when the player reports the ENDED state after real playback time has passed', async () => {
