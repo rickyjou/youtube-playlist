@@ -189,7 +189,7 @@ body {
 .player-wrapper.is-fullscreen .player-nav-prev,
 .player-wrapper.is-fullscreen .player-nav-next {
   top: 0;
-  bottom: 70px;
+  bottom: 110px;
   height: auto;
   width: 15%;
   transform: none;
