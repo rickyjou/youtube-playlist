@@ -36,6 +36,17 @@ describe('ShareLink', () => {
     )
   })
 
+  it('opens the generated link in a reusable named tab', () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => {})
+    render(<ShareLink playlist={playlist} />)
+    fireEvent.click(screen.getByText('Generate Shareable Link'))
+
+    const link = screen.getByRole('textbox').value
+    fireEvent.click(screen.getByText('Open in New Tab'))
+
+    expect(openSpy).toHaveBeenCalledWith(link, 'sharedPlaylistPreview')
+  })
+
   it('clears the generated link once the playlist prop changes', () => {
     const { rerender } = render(<ShareLink playlist={playlist} />)
     fireEvent.click(screen.getByText('Generate Shareable Link'))
