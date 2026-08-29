@@ -24,6 +24,7 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
   clipRef.current = { videoId, start, end }
   const hasEndedRef = useRef(false)
   const loadedAtRef = useRef(0)
+  const hasPlayedRef = useRef(false)
 
   useEffect(() => {
     let cancelled = false
@@ -44,6 +45,9 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
         },
         events: {
           onStateChange: (event) => {
+            if (event.data === YT.PlayerState.PLAYING) {
+              hasPlayedRef.current = true
+            }
             const spurious = Date.now() - loadedAtRef.current < 1500
             if (event.data === YT.PlayerState.ENDED && !hasEndedRef.current && !spurious) {
               hasEndedRef.current = true
@@ -64,12 +68,13 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
   useEffect(() => {
     hasEndedRef.current = false
     loadedAtRef.current = Date.now()
-    if (!playerRef.current?.cueVideoById) return
-    playerRef.current.cueVideoById({
-      videoId,
-      startSeconds: start,
-      endSeconds: end,
-    })
+    if (hasPlayedRef.current) {
+      if (!playerRef.current?.loadVideoById) return
+      playerRef.current.loadVideoById({ videoId, startSeconds: start, endSeconds: end })
+    } else {
+      if (!playerRef.current?.cueVideoById) return
+      playerRef.current.cueVideoById({ videoId, startSeconds: start, endSeconds: end })
+    }
   }, [videoId, start, end])
 
   return <div ref={containerRef} className="player-frame" />
