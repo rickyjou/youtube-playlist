@@ -25,23 +25,28 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: /youtube playlist/i })).toBeInTheDocument()
   })
 
+  it('opens the GitHub link without exposing window.opener', () => {
+    render(<App />)
+    expect(screen.getByText('Github Repository')).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
   it('starts with the default demo playlist when no share link is present', () => {
     render(<App />)
     expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
   })
 
   it('loads the playlist from a shared URL instead of the default', () => {
-    const shared = [{ videoId: 'shared1', start: 0, end: 20 }]
+    const shared = [{ videoId: 'sharedvid01', start: 0, end: 20 }]
     const encoded = btoa(JSON.stringify(shared))
     window.history.pushState({}, '', `/?playlist=${encoded}`)
 
     render(<App />)
 
-    expect(screen.getByTestId('player')).toHaveTextContent('shared1')
+    expect(screen.getByTestId('player')).toHaveTextContent('sharedvid01')
   })
 
   it('shows only the player, total time, and clock for a shared playlist, hiding all editing controls', () => {
-    const shared = [{ videoId: 'shared1', start: 0, end: 20 }]
+    const shared = [{ videoId: 'sharedvid01', start: 0, end: 20 }]
     const encoded = btoa(JSON.stringify(shared))
     window.history.pushState({}, '', `/?playlist=${encoded}`)
 

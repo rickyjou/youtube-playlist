@@ -3,6 +3,7 @@ import { buildShareUrl } from '../lib/shareUrl.js'
 
 export default function ShareLink({ playlist }) {
   const [link, setLink] = useState('')
+  const [error, setError] = useState('')
 
   useEffect(() => {
     setLink('')
@@ -14,11 +15,16 @@ export default function ShareLink({ playlist }) {
   }
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(link)
+    try {
+      await navigator.clipboard.writeText(link)
+      setError('')
+    } catch (e) {
+      setError(`Could not copy link: ${e.message}`)
+    }
   }
 
   function handleOpen() {
-    window.open(link, 'sharedPlaylistPreview')
+    window.open(link, 'sharedPlaylistPreview', 'noopener,noreferrer')
   }
 
   return (
@@ -35,6 +41,7 @@ export default function ShareLink({ playlist }) {
           <button type="button" className="btn btn-secondary" onClick={handleOpen}>
             Open in New Tab
           </button>
+          {error && <p role="alert">{error}</p>}
         </div>
       )}
     </section>

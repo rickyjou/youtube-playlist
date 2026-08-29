@@ -1,4 +1,4 @@
-const VIDEO_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/
+export const VIDEO_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/
 const PLAYLIST_ID_PATTERN = /^[a-zA-Z0-9_-]+$/
 
 export function parseYouTubeInput(input) {

@@ -2,6 +2,10 @@ import { useState } from 'react'
 import { parseYouTubeInput } from '../lib/youtubeInput.js'
 import { fetchVideoMetadata, fetchPlaylistVideoIds } from '../lib/youtubeApi.js'
 
+function toClip(videoId, metadata) {
+  return { videoId, start: 0, end: metadata[videoId]?.durationSeconds ?? 0 }
+}
+
 export default function AddClipInput({ apiKey, onAddClips, onLoadPlaylist }) {
   const [url, setUrl] = useState('')
   const [error, setError] = useState('')
@@ -21,16 +25,11 @@ export default function AddClipInput({ apiKey, onAddClips, onLoadPlaylist }) {
     try {
       if (parsed.type === 'video') {
         const metadata = await fetchVideoMetadata([parsed.videoId], apiKey)
-        const endSeconds = metadata[parsed.videoId]?.durationSeconds ?? 0
-        onAddClips([{ videoId: parsed.videoId, start: 0, end: endSeconds }], metadata)
+        onAddClips([toClip(parsed.videoId, metadata)], metadata)
       } else {
         const videoIds = await fetchPlaylistVideoIds(parsed.playlistId, apiKey)
         const metadata = await fetchVideoMetadata(videoIds, apiKey)
-        const clips = videoIds.map((videoId) => ({
-          videoId,
-          start: 0,
-          end: metadata[videoId]?.durationSeconds ?? 0,
-        }))
+        const clips = videoIds.map((videoId) => toClip(videoId, metadata))
         onLoadPlaylist(clips, metadata)
       }
       setUrl('')

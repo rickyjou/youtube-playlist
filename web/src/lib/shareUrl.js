@@ -1,3 +1,5 @@
+import { VIDEO_ID_PATTERN } from './youtubeInput.js'
+
 export function isValidPlaylist(value) {
   if (!Array.isArray(value)) return false
   return value.every(
@@ -5,8 +7,11 @@ export function isValidPlaylist(value) {
       clip !== null &&
       typeof clip === 'object' &&
       typeof clip.videoId === 'string' &&
-      typeof clip.start === 'number' &&
-      typeof clip.end === 'number',
+      VIDEO_ID_PATTERN.test(clip.videoId) &&
+      Number.isFinite(clip.start) &&
+      Number.isFinite(clip.end) &&
+      clip.start >= 0 &&
+      clip.end >= clip.start,
   )
 }
 

@@ -24,11 +24,17 @@ function getStoredTheme() {
   return stored === 'light' || stored === 'dark' ? stored : null
 }
 
+function getEffectiveTheme(theme) {
+  return theme ?? (prefersDarkScheme() ? 'dark' : 'light')
+}
+
 export default function App() {
-  const [playlist, setPlaylist] = useState(
-    () => decodePlaylistFromUrl(window.location.search) ?? DEFAULT_PLAYLIST,
-  )
-  const [isSharedView] = useState(() => decodePlaylistFromUrl(window.location.search) != null)
+  const [initialState] = useState(() => {
+    const shared = decodePlaylistFromUrl(window.location.search)
+    return { playlist: shared ?? DEFAULT_PLAYLIST, isSharedView: shared != null }
+  })
+  const [playlist, setPlaylist] = useState(initialState.playlist)
+  const [isSharedView] = useState(initialState.isSharedView)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [metadata, setMetadata] = useState({})
   const [theme, setTheme] = useState(getStoredTheme)
@@ -43,7 +49,7 @@ export default function App() {
   }, [theme])
 
   function handleToggleTheme() {
-    const current = theme ?? (prefersDarkScheme() ? 'dark' : 'light')
+    const current = getEffectiveTheme(theme)
     setTheme(current === 'dark' ? 'light' : 'dark')
   }
 
@@ -102,12 +108,15 @@ export default function App() {
   }
 
   const currentClip = playlist[currentIndex]
-  const effectiveTheme = theme ?? (prefersDarkScheme() ? 'dark' : 'light')
+  const effectiveTheme = getEffectiveTheme(theme)
+  const totalSeconds = calculateTotalSeconds(playlist)
 
   return (
     <div>
       <div className="top-bar">
-        <a href="https://github.com/rickyjou/youtube-playlist">Github Repository</a>
+        <a href="https://github.com/rickyjou/youtube-playlist" rel="noopener noreferrer">
+          Github Repository
+        </a>
         <button
           type="button"
           className="btn btn-secondary btn-icon"
@@ -128,8 +137,8 @@ export default function App() {
       )}
       {isSharedView ? (
         <>
-          <SharedClock totalSeconds={calculateTotalSeconds(playlist)} />
-          <p>Total time: {formatTime(calculateTotalSeconds(playlist))}</p>
+          <SharedClock totalSeconds={totalSeconds} />
+          <p>Total time: {formatTime(totalSeconds)}</p>
         </>
       ) : (
         <>

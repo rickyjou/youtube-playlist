@@ -7,8 +7,10 @@ export default function RawJsonPanel({ playlist, onReplacePlaylist, onReset }) {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    setText(JSON.stringify(playlist))
-  }, [playlist])
+    if (!open) {
+      setText(JSON.stringify(playlist))
+    }
+  }, [playlist, open])
 
   function handleUpdate() {
     try {
@@ -19,8 +21,9 @@ export default function RawJsonPanel({ playlist, onReplacePlaylist, onReset }) {
       }
       setError('')
       onReplacePlaylist(parsed)
-    } catch {
+    } catch (e) {
       setError('JSON format error. Please check your input and try again.')
+      console.error('Invalid playlist JSON:', e)
     }
   }
 
