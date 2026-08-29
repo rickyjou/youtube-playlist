@@ -203,7 +203,8 @@ body {
 }
 
 .player-fullscreen-toggle {
-  top: 12px;
+  top: auto;
+  bottom: 12px;
   right: 12px;
   left: auto;
   transform: none;
