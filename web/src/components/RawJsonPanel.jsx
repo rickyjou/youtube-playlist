@@ -21,6 +21,7 @@ export default function RawJsonPanel({ playlist, onReplacePlaylist, onReset }) {
 
   function handleReset() {
     if (window.confirm('Are you sure you want to remove all videos from the playlist?')) {
+      setError('')
       onReset()
     }
   }

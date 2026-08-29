@@ -44,4 +44,20 @@ describe('RawJsonPanel', () => {
     expect(onReset).toHaveBeenCalled()
     window.confirm.mockRestore()
   })
+
+  it('clears JSON error when resetting after a parse error', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const onReset = vi.fn()
+    render(<RawJsonPanel playlist={[]} onReplacePlaylist={vi.fn()} onReset={onReset} />)
+
+    fireEvent.click(screen.getByText('Show advanced JSON editor'))
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'not json' } })
+    fireEvent.click(screen.getByText('Update and Play from beginning'))
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Reset and Remove All Videos'))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(onReset).toHaveBeenCalled()
+    window.confirm.mockRestore()
+  })
 })
