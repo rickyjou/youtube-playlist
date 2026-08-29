@@ -64,8 +64,8 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
   useEffect(() => {
     hasEndedRef.current = false
     loadedAtRef.current = Date.now()
-    if (!playerRef.current?.loadVideoById) return
-    playerRef.current.loadVideoById({
+    if (!playerRef.current?.cueVideoById) return
+    playerRef.current.cueVideoById({
       videoId,
       startSeconds: start,
       endSeconds: end,
