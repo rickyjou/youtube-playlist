@@ -33,6 +33,18 @@ describe('RawJsonPanel', () => {
     expect(onReplacePlaylist).not.toHaveBeenCalled()
   })
 
+  it('shows an error for valid JSON with the wrong shape instead of calling onReplacePlaylist', () => {
+    const onReplacePlaylist = vi.fn()
+    render(<RawJsonPanel playlist={[]} onReplacePlaylist={onReplacePlaylist} onReset={vi.fn()} />)
+
+    fireEvent.click(screen.getByText('Show advanced JSON editor'))
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '{}' } })
+    fireEvent.click(screen.getByText('Update and Play from beginning'))
+
+    expect(screen.getByRole('alert')).toHaveTextContent('JSON format error')
+    expect(onReplacePlaylist).not.toHaveBeenCalled()
+  })
+
   it('calls onReset after the user confirms clearing the playlist', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     const onReset = vi.fn()

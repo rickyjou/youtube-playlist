@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { isValidPlaylist } from '../lib/shareUrl.js'
 
 export default function RawJsonPanel({ playlist, onReplacePlaylist, onReset }) {
   const [text, setText] = useState(JSON.stringify(playlist))
@@ -12,6 +13,10 @@ export default function RawJsonPanel({ playlist, onReplacePlaylist, onReset }) {
   function handleUpdate() {
     try {
       const parsed = JSON.parse(text)
+      if (!isValidPlaylist(parsed)) {
+        setError('JSON format error. Please check your input and try again.')
+        return
+      }
       setError('')
       onReplacePlaylist(parsed)
     } catch {

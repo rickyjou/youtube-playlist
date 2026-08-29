@@ -17,6 +17,16 @@ describe('decodePlaylistFromUrl', () => {
     expect(decodePlaylistFromUrl('?playlist=not-valid-base64!!!')).toBeNull()
     spy.mockRestore()
   })
+
+  it('returns null for syntactically valid JSON that is not a playlist array', () => {
+    const encoded = btoa(JSON.stringify({}))
+    expect(decodePlaylistFromUrl(`?playlist=${encoded}`)).toBeNull()
+  })
+
+  it('returns null for an array whose entries have the wrong shape', () => {
+    const encoded = btoa(JSON.stringify([{ videoId: 123, start: 0, end: 10 }]))
+    expect(decodePlaylistFromUrl(`?playlist=${encoded}`)).toBeNull()
+  })
 })
 
 describe('buildShareUrl', () => {
