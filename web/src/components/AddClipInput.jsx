@@ -41,20 +41,24 @@ export default function AddClipInput({ apiKey, onAddClips, onLoadPlaylist }) {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className="add-clip-form">
       <h2>Add a video or load a playlist</h2>
-      <label>
-        YouTube link
+      <div className="input-row">
+        <label className="input-row-label" htmlFor="youtube-link-input">
+          YouTube link
+        </label>
         <input
+          id="youtube-link-input"
           type="text"
+          className="input-row-field"
           value={url}
           onChange={(event) => setUrl(event.target.value)}
           placeholder="https://www.youtube.com/watch?v=... or .../playlist?list=..."
         />
-      </label>
-      <button type="submit" className="btn btn-primary" disabled={loading}>
-        {loading ? 'Adding…' : 'Add'}
-      </button>
+        <button type="submit" className="btn btn-primary" disabled={loading}>
+          {loading ? 'Adding…' : 'Add'}
+        </button>
+      </div>
       {error && <p role="alert">{error}</p>}
     </form>
   )

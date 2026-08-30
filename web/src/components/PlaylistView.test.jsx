@@ -37,11 +37,33 @@ describe('PlaylistView', () => {
     expect(screen.getByText('Total time: 1:30')).toBeInTheDocument()
   })
 
-  it('calls onUpdateClip with the new end time when an end input changes', () => {
+  it('calls onUpdateClip with the new end time when the end seconds input changes', () => {
     const { onUpdateClip } = renderView()
-    const endInputs = screen.getAllByLabelText('End')
-    fireEvent.change(endInputs[0], { target: { value: '90' } })
+    const endSecondsInputs = screen.getAllByLabelText('End seconds')
+    fireEvent.change(endSecondsInputs[0], { target: { value: '30' } })
     expect(onUpdateClip).toHaveBeenCalledWith(0, { start: 0, end: 90 })
+  })
+
+  it('calls onUpdateClip with the new end time when the end minutes input changes', () => {
+    const { onUpdateClip } = renderView()
+    const endMinutesInputs = screen.getAllByLabelText('End minutes')
+    fireEvent.change(endMinutesInputs[0], { target: { value: '2' } })
+    expect(onUpdateClip).toHaveBeenCalledWith(0, { start: 0, end: 120 })
+  })
+
+  it('carries seconds over into minutes when 60 or more is entered', () => {
+    const { onUpdateClip } = renderView()
+    const endSecondsInputs = screen.getAllByLabelText('End seconds')
+    fireEvent.change(endSecondsInputs[0], { target: { value: '75' } })
+    expect(onUpdateClip).toHaveBeenCalledWith(0, { start: 0, end: 135 })
+  })
+
+  it('shows minutes and seconds split from the stored total seconds', () => {
+    renderView()
+    expect(screen.getAllByLabelText('Start minutes')[1]).toHaveValue(0)
+    expect(screen.getAllByLabelText('Start seconds')[1]).toHaveValue(10)
+    expect(screen.getAllByLabelText('End minutes')[1]).toHaveValue(0)
+    expect(screen.getAllByLabelText('End seconds')[1]).toHaveValue(40)
   })
 
   it('calls onDeleteClip with the row index', () => {

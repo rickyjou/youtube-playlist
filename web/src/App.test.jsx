@@ -70,8 +70,8 @@ describe('App', () => {
   it('shows the full editor (start/end fields, delete, share, add) for the default non-shared playlist', () => {
     render(<App />)
 
-    expect(screen.getAllByLabelText('Start')).not.toHaveLength(0)
-    expect(screen.getAllByLabelText('End')).not.toHaveLength(0)
+    expect(screen.getAllByLabelText('Start minutes')).not.toHaveLength(0)
+    expect(screen.getAllByLabelText('End minutes')).not.toHaveLength(0)
     expect(screen.getAllByText('Delete')).not.toHaveLength(0)
     expect(screen.getByLabelText('YouTube link')).toBeInTheDocument()
     expect(screen.getByText('Generate Shareable Link')).toBeInTheDocument()
