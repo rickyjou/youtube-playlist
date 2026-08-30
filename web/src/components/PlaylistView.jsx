@@ -1,5 +1,50 @@
 import { formatTime, calculateTotalSeconds } from '../lib/time.js'
 
+function secondsToParts(totalSeconds) {
+  const safeSeconds = Number.isFinite(totalSeconds) && totalSeconds > 0 ? totalSeconds : 0
+  return { minutes: Math.floor(safeSeconds / 60), seconds: safeSeconds % 60 }
+}
+
+function TimeField({ label, totalSeconds, onChange }) {
+  const { minutes, seconds } = secondsToParts(totalSeconds)
+
+  function handleMinutesChange(event) {
+    const value = Number(event.target.value)
+    if (!Number.isFinite(value) || value < 0) return
+    onChange(value * 60 + seconds)
+  }
+
+  function handleSecondsChange(event) {
+    const value = Number(event.target.value)
+    if (!Number.isFinite(value) || value < 0) return
+    onChange(minutes * 60 + value)
+  }
+
+  return (
+    <span className="clip-field clip-time-field">
+      {label}
+      <input
+        type="number"
+        min="0"
+        className="clip-time-input"
+        aria-label={`${label} minutes`}
+        value={minutes}
+        onChange={handleMinutesChange}
+      />
+      <span className="clip-time-sep">:</span>
+      <input
+        type="number"
+        min="0"
+        max="59"
+        className="clip-time-input"
+        aria-label={`${label} seconds`}
+        value={seconds}
+        onChange={handleSecondsChange}
+      />
+    </span>
+  )
+}
+
 export default function PlaylistView({ playlist, currentIndex, metadata, onUpdateClip, onDeleteClip, onMoveClip }) {
   const totalSeconds = calculateTotalSeconds(playlist)
 
@@ -11,34 +56,19 @@ export default function PlaylistView({ playlist, currentIndex, metadata, onUpdat
           return (
             <li key={`${clip.videoId}-${index}`} className={index === currentIndex ? 'playing' : ''}>
               <div className="clip-row">
+                <span className="clip-index">{index + 1}.</span>
                 {meta?.thumbnail && <img src={meta.thumbnail} alt="" width="60" />}
                 <span className="clip-title">{meta?.title ?? clip.videoId}</span>
-                <label className="clip-field">
-                  Start
-                  <input
-                    type="number"
-                    min="0"
-                    value={clip.start}
-                    onChange={(event) => {
-                      const value = Number(event.target.value)
-                      if (!Number.isFinite(value) || value < 0) return
-                      onUpdateClip(index, { start: value, end: clip.end })
-                    }}
-                  />
-                </label>
-                <label className="clip-field">
-                  End
-                  <input
-                    type="number"
-                    min="0"
-                    value={clip.end}
-                    onChange={(event) => {
-                      const value = Number(event.target.value)
-                      if (!Number.isFinite(value) || value < 0) return
-                      onUpdateClip(index, { start: clip.start, end: value })
-                    }}
-                  />
-                </label>
+                <TimeField
+                  label="Start"
+                  totalSeconds={clip.start}
+                  onChange={(value) => onUpdateClip(index, { start: value, end: clip.end })}
+                />
+                <TimeField
+                  label="End"
+                  totalSeconds={clip.end}
+                  onChange={(value) => onUpdateClip(index, { start: clip.start, end: value })}
+                />
                 <div className="clip-actions">
                   <button
                     type="button"

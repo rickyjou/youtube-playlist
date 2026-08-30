@@ -17,7 +17,7 @@ function loadYouTubeIframeApi() {
   return iframeApiPromise
 }
 
-export default function YouTubePlayer({ videoId, start, end, onEnded, disableNativeFullscreen }) {
+export default function YouTubePlayer({ videoId, start, end, onEnded, disableNativeFullscreen, autoplayToken }) {
   const containerRef = useRef(null)
   const playerRef = useRef(null)
   const clipRef = useRef({ videoId, start, end })
@@ -25,6 +25,7 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
   const hasEndedRef = useRef(false)
   const loadedAtRef = useRef(0)
   const hasPlayedRef = useRef(false)
+  const lastAutoplayTokenRef = useRef(autoplayToken)
 
   useEffect(() => {
     let cancelled = false
@@ -68,14 +69,17 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
   useEffect(() => {
     hasEndedRef.current = false
     loadedAtRef.current = Date.now()
-    if (hasPlayedRef.current) {
+    const forcePlay = autoplayToken !== undefined && autoplayToken !== lastAutoplayTokenRef.current
+    lastAutoplayTokenRef.current = autoplayToken
+    if (hasPlayedRef.current || forcePlay) {
       if (!playerRef.current?.loadVideoById) return
+      hasPlayedRef.current = true
       playerRef.current.loadVideoById({ videoId, startSeconds: start, endSeconds: end })
     } else {
       if (!playerRef.current?.cueVideoById) return
       playerRef.current.cueVideoById({ videoId, startSeconds: start, endSeconds: end })
     }
-  }, [videoId, start, end])
+  }, [videoId, start, end, autoplayToken])
 
   return <div ref={containerRef} className="player-frame" />
 }

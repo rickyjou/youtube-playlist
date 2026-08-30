@@ -38,6 +38,7 @@ export default function App() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [metadata, setMetadata] = useState({})
   const [theme, setTheme] = useState(getStoredTheme)
+  const [autoplayToken, setAutoplayToken] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showFullscreenControls, setShowFullscreenControls] = useState(true)
   const playerWrapperRef = useRef(null)
@@ -133,6 +134,7 @@ export default function App() {
   function handleReplacePlaylist(newPlaylist) {
     setPlaylist(newPlaylist)
     setCurrentIndex(0)
+    setAutoplayToken((token) => token + 1)
   }
 
   function handleReset() {
@@ -170,6 +172,7 @@ export default function App() {
       end={currentClip.end}
       onEnded={handleEnded}
       disableNativeFullscreen={isSharedView}
+      autoplayToken={autoplayToken}
     />
   )
 
@@ -230,17 +233,19 @@ export default function App() {
       ) : (
         <>
           {player}
-          <PlaylistView
-            playlist={playlist}
-            currentIndex={currentIndex}
-            metadata={metadata}
-            onUpdateClip={handleUpdateClip}
-            onDeleteClip={handleDeleteClip}
-            onMoveClip={handleMoveClip}
-          />
-          <AddClipInput apiKey={API_KEY} onAddClips={handleAddClips} onLoadPlaylist={handleLoadPlaylist} />
-          <ShareLink playlist={playlist} />
-          <RawJsonPanel playlist={playlist} onReplacePlaylist={handleReplacePlaylist} onReset={handleReset} />
+          <div className="page-sections">
+            <PlaylistView
+              playlist={playlist}
+              currentIndex={currentIndex}
+              metadata={metadata}
+              onUpdateClip={handleUpdateClip}
+              onDeleteClip={handleDeleteClip}
+              onMoveClip={handleMoveClip}
+            />
+            <AddClipInput apiKey={API_KEY} onAddClips={handleAddClips} onLoadPlaylist={handleLoadPlaylist} />
+            <ShareLink playlist={playlist} />
+            <RawJsonPanel playlist={playlist} onReplacePlaylist={handleReplacePlaylist} onReset={handleReset} />
+          </div>
         </>
       )}
     </div>

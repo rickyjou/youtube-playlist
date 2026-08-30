@@ -33,8 +33,8 @@ export default function ShareLink({ playlist }) {
         Generate Shareable Link
       </button>
       {link && (
-        <div>
-          <input type="text" readOnly value={link} />
+        <div className="input-row">
+          <input type="text" readOnly value={link} className="input-row-field" />
           <button type="button" className="btn btn-secondary" onClick={handleCopy}>
             Copy Link
           </button>
