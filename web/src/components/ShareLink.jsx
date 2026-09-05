@@ -1,17 +1,26 @@
 import { useEffect, useState } from 'react'
 import { buildShareUrl } from '../lib/shareUrl.js'
+import { shortenUrl } from '../lib/urlShortener.js'
 
 export default function ShareLink({ playlist }) {
   const [link, setLink] = useState('')
   const [error, setError] = useState('')
+  const [shortenFailed, setShortenFailed] = useState(false)
+  const [generating, setGenerating] = useState(false)
 
   useEffect(() => {
     setLink('')
+    setShortenFailed(false)
   }, [playlist])
 
-  function handleGenerate() {
+  async function handleGenerate() {
     const baseUrl = window.location.origin + window.location.pathname
-    setLink(buildShareUrl(playlist, baseUrl))
+    const longUrl = buildShareUrl(playlist, baseUrl)
+    setGenerating(true)
+    const shortUrl = await shortenUrl(longUrl)
+    setShortenFailed(!shortUrl)
+    setLink(shortUrl || longUrl)
+    setGenerating(false)
   }
 
   async function handleCopy() {
@@ -29,8 +38,13 @@ export default function ShareLink({ playlist }) {
 
   return (
     <section>
-      <button type="button" className="btn btn-primary" onClick={handleGenerate}>
-        Generate Shareable Link
+      <button
+        type="button"
+        className="btn btn-primary"
+        onClick={handleGenerate}
+        disabled={generating}
+      >
+        {generating ? 'Generating...' : 'Generate Shareable Link'}
       </button>
       {link && (
         <div className="input-row">
@@ -41,6 +55,7 @@ export default function ShareLink({ playlist }) {
           <button type="button" className="btn btn-secondary" onClick={handleOpen}>
             Open in New Tab
           </button>
+          {shortenFailed && <p>Couldn't shorten link — showing full link</p>}
           {error && <p role="alert">{error}</p>}
         </div>
       )}
