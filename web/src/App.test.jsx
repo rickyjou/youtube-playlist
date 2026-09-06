@@ -18,6 +18,7 @@ vi.mock('./lib/youtubeApi.js')
 describe('App', () => {
   beforeEach(() => {
     window.history.pushState({}, '', '/')
+    youtubeApi.fetchVideoMetadata.mockReset().mockResolvedValue({})
   })
 
   afterEach(() => {
@@ -260,5 +261,26 @@ describe('App', () => {
 
     await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(3))
     expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+  })
+
+  it('fetches metadata for the default playlist on mount so titles and end-time reset use real video data', async () => {
+    youtubeApi.fetchVideoMetadata.mockResolvedValue({
+      '6MTbZBg9pQc': { title: 'Video One', thumbnail: '', durationSeconds: 761 },
+      gUSWWqnOKt0: { title: 'Video Two', thumbnail: '', durationSeconds: 140 },
+    })
+    render(<App />)
+
+    await waitFor(() => expect(screen.getByText('Video One')).toBeInTheDocument())
+    expect(screen.getByText('Video Two')).toBeInTheDocument()
+  })
+
+  it('does not fetch metadata when viewing a shared playlist', () => {
+    const shared = [{ videoId: 'sharedvid01', start: 0, end: 20 }]
+    const encoded = btoa(JSON.stringify(shared))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+
+    render(<App />)
+
+    expect(youtubeApi.fetchVideoMetadata).not.toHaveBeenCalled()
   })
 })

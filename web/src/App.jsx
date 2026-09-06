@@ -7,6 +7,7 @@ import ShareLink from './components/ShareLink.jsx'
 import SharedClock from './components/SharedClock.jsx'
 import { decodePlaylistFromUrl } from './lib/shareUrl.js'
 import { calculateTotalSeconds } from './lib/time.js'
+import { fetchVideoMetadata } from './lib/youtubeApi.js'
 
 const DEFAULT_PLAYLIST = [
   { videoId: '6MTbZBg9pQc', start: 0, end: 761 },
@@ -42,6 +43,7 @@ export default function App() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showFullscreenControls, setShowFullscreenControls] = useState(true)
   const playerWrapperRef = useRef(null)
+  const requestedMetadataIdsRef = useRef(new Set())
   const hideControlsTimeoutRef = useRef(null)
 
   function scheduleHideControls() {
@@ -69,6 +71,31 @@ export default function App() {
   useEffect(() => {
     return () => clearTimeout(hideControlsTimeoutRef.current)
   }, [])
+
+  useEffect(() => {
+    if (isSharedView) return
+    const requested = requestedMetadataIdsRef.current
+    const missingIds = [...new Set(playlist.map((clip) => clip.videoId))].filter(
+      (id) => !(id in metadata) && !requested.has(id),
+    )
+    if (missingIds.length === 0) return
+    missingIds.forEach((id) => requested.add(id))
+    let settled = false
+    fetchVideoMetadata(missingIds, API_KEY)
+      .then((fetched) => {
+        settled = true
+        if (Object.keys(fetched).length > 0) {
+          setMetadata((current) => ({ ...current, ...fetched }))
+        }
+      })
+      .catch((e) => {
+        settled = true
+        console.error('Error fetching video metadata:', e)
+      })
+    return () => {
+      if (!settled) missingIds.forEach((id) => requested.delete(id))
+    }
+  }, [playlist, metadata, isSharedView])
 
   function handlePlayerMouseMove() {
     scheduleHideControls()
