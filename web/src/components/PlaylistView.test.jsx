@@ -66,6 +66,16 @@ describe('PlaylistView', () => {
     expect(screen.getAllByLabelText('End seconds')[1]).toHaveValue(40)
   })
 
+  it('selects the existing digits when a time input is focused, so typing overwrites them', () => {
+    renderView()
+    const input = screen.getAllByLabelText('End seconds')[1]
+    const selectSpy = vi.spyOn(input, 'select')
+
+    fireEvent.focus(input)
+
+    expect(selectSpy).toHaveBeenCalled()
+  })
+
   it('calls onDeleteClip with the row index', () => {
     const { onDeleteClip } = renderView()
     fireEvent.click(screen.getAllByText('Delete')[1])

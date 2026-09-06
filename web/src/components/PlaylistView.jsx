@@ -30,6 +30,7 @@ function TimeField({ label, totalSeconds, onChange }) {
         aria-label={`${label} minutes`}
         value={minutes}
         onChange={handleMinutesChange}
+        onFocus={(event) => event.target.select()}
       />
       <span className="clip-time-sep">:</span>
       <input
@@ -40,6 +41,7 @@ function TimeField({ label, totalSeconds, onChange }) {
         aria-label={`${label} seconds`}
         value={seconds}
         onChange={handleSecondsChange}
+        onFocus={(event) => event.target.select()}
       />
     </span>
   )
