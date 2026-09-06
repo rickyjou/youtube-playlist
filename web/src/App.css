@@ -115,6 +115,13 @@ body {
   color: var(--color-border);
 }
 
+.btn-icon-reset {
+  padding: 2px 6px;
+  min-width: unset;
+  font-size: 12px;
+  line-height: 1;
+}
+
 .clip-actions {
   display: flex;
   gap: 6px;

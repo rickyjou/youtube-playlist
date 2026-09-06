@@ -43,6 +43,14 @@ function TimeField({ label, totalSeconds, onChange }) {
         onChange={handleSecondsChange}
         onFocus={(event) => event.target.select()}
       />
+      <button
+        type="button"
+        className="btn btn-secondary btn-icon-reset"
+        aria-label={`Reset ${label} time`}
+        onClick={() => onChange(0)}
+      >
+        ↺
+      </button>
     </span>
   )
 }

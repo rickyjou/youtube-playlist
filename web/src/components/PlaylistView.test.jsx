@@ -76,6 +76,18 @@ describe('PlaylistView', () => {
     expect(selectSpy).toHaveBeenCalled()
   })
 
+  it('resets the start time to 0:00 without touching the end time', () => {
+    const { onUpdateClip } = renderView()
+    fireEvent.click(screen.getAllByLabelText('Reset Start time')[1])
+    expect(onUpdateClip).toHaveBeenCalledWith(1, { start: 0, end: 40 })
+  })
+
+  it('resets the end time to 0:00 without touching the start time', () => {
+    const { onUpdateClip } = renderView()
+    fireEvent.click(screen.getAllByLabelText('Reset End time')[1])
+    expect(onUpdateClip).toHaveBeenCalledWith(1, { start: 10, end: 0 })
+  })
+
   it('calls onDeleteClip with the row index', () => {
     const { onDeleteClip } = renderView()
     fireEvent.click(screen.getAllByText('Delete')[1])
