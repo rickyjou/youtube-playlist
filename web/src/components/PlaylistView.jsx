@@ -5,7 +5,7 @@ function secondsToParts(totalSeconds) {
   return { minutes: Math.floor(safeSeconds / 60), seconds: safeSeconds % 60 }
 }
 
-function TimeField({ label, totalSeconds, onChange }) {
+function TimeField({ label, totalSeconds, onChange, resetTo = 0 }) {
   const { minutes, seconds } = secondsToParts(totalSeconds)
 
   function handleMinutesChange(event) {
@@ -47,7 +47,7 @@ function TimeField({ label, totalSeconds, onChange }) {
         type="button"
         className="btn btn-secondary btn-icon-reset"
         aria-label={`Reset ${label} time`}
-        onClick={() => onChange(0)}
+        onClick={() => onChange(resetTo)}
       >
         ↺
       </button>
@@ -78,6 +78,7 @@ export default function PlaylistView({ playlist, currentIndex, metadata, onUpdat
                   label="End"
                   totalSeconds={clip.end}
                   onChange={(value) => onUpdateClip(index, { start: clip.start, end: value })}
+                  resetTo={meta?.durationSeconds ?? 0}
                 />
                 <div className="clip-actions">
                   <button

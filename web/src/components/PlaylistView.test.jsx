@@ -82,7 +82,15 @@ describe('PlaylistView', () => {
     expect(onUpdateClip).toHaveBeenCalledWith(1, { start: 0, end: 40 })
   })
 
-  it('resets the end time to 0:00 without touching the start time', () => {
+  it('resets the end time to the video duration without touching the start time', () => {
+    const { onUpdateClip } = renderView({
+      metadata: { b: { title: 'B', thumbnail: '', durationSeconds: 200 } },
+    })
+    fireEvent.click(screen.getAllByLabelText('Reset End time')[1])
+    expect(onUpdateClip).toHaveBeenCalledWith(1, { start: 10, end: 200 })
+  })
+
+  it('resets the end time to 0:00 when the video duration is not known yet', () => {
     const { onUpdateClip } = renderView()
     fireEvent.click(screen.getAllByLabelText('Reset End time')[1])
     expect(onUpdateClip).toHaveBeenCalledWith(1, { start: 10, end: 0 })
