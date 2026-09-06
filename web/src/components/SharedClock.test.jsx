@@ -12,11 +12,16 @@ describe('SharedClock', () => {
     vi.useRealTimers()
   })
 
-  it('shows the current time and countdown to the playlist start', () => {
+  it('shows the current time, start time, total time and countdown, in that order', () => {
     render(<SharedClock totalSeconds={15 * 60} />)
 
-    expect(screen.getByText('Current time: 3:10:00 AM')).toBeInTheDocument()
-    expect(screen.getByText('Starts in: 35:00')).toBeInTheDocument()
+    const lines = screen.getAllByRole('paragraph').map((p) => p.textContent)
+    expect(lines).toEqual([
+      'Current time: 3:10:00 AM',
+      'Start time: 3:45:00 AM',
+      'Total time: 15:00',
+      'Starts in: 35:00',
+    ])
   })
 
   it('ticks every second', () => {

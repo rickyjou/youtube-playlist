@@ -33,3 +33,7 @@ export function secondsUntilPlaylistStart(totalSeconds, now) {
   const secondsIntoHour = now.getMinutes() * 60 + now.getSeconds()
   return ((startOffset - secondsIntoHour) % SECONDS_PER_HOUR + SECONDS_PER_HOUR) % SECONDS_PER_HOUR
 }
+
+export function getPlaylistStartTime(totalSeconds, now) {
+  return new Date(now.getTime() + secondsUntilPlaylistStart(totalSeconds, now) * 1000)
+}

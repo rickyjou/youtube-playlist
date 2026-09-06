@@ -6,7 +6,7 @@ import RawJsonPanel from './components/RawJsonPanel.jsx'
 import ShareLink from './components/ShareLink.jsx'
 import SharedClock from './components/SharedClock.jsx'
 import { decodePlaylistFromUrl } from './lib/shareUrl.js'
-import { formatTime, calculateTotalSeconds } from './lib/time.js'
+import { calculateTotalSeconds } from './lib/time.js'
 
 const DEFAULT_PLAYLIST = [
   { videoId: '6MTbZBg9pQc', start: 0, end: 761 },
@@ -228,7 +228,6 @@ export default function App() {
             </div>
           )}
           <SharedClock totalSeconds={totalSeconds} />
-          <p>Total time: {formatTime(totalSeconds)}</p>
         </>
       ) : (
         <>

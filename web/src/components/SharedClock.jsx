@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react'
-import { formatClockTime, formatCountdown, secondsUntilPlaylistStart } from '../lib/time.js'
+import {
+  formatClockTime,
+  formatCountdown,
+  formatTime,
+  getPlaylistStartTime,
+  secondsUntilPlaylistStart,
+} from '../lib/time.js'
 
 export default function SharedClock({ totalSeconds }) {
   const [now, setNow] = useState(() => new Date())
@@ -12,6 +18,8 @@ export default function SharedClock({ totalSeconds }) {
   return (
     <div className="shared-clock">
       <p>Current time: {formatClockTime(now)}</p>
+      <p>Start time: {formatClockTime(getPlaylistStartTime(totalSeconds, now))}</p>
+      <p>Total time: {formatTime(totalSeconds)}</p>
       <p>Starts in: {formatCountdown(secondsUntilPlaylistStart(totalSeconds, now))}</p>
     </div>
   )

@@ -5,6 +5,7 @@ import {
   formatClockTime,
   formatCountdown,
   secondsUntilPlaylistStart,
+  getPlaylistStartTime,
 } from './time.js'
 
 describe('formatTime', () => {
@@ -89,5 +90,18 @@ describe('secondsUntilPlaylistStart', () => {
     const now = new Date(2026, 0, 1, 3, 22, 0)
     expect(secondsUntilPlaylistStart(3600, now)).toBe(0)
     expect(secondsUntilPlaylistStart(4000, now)).toBe(0)
+  })
+})
+
+describe('getPlaylistStartTime', () => {
+  it('returns the clock time the playlist will start, offset by the countdown', () => {
+    // 15 min playlist starts at :45 past the hour; at :10 past, that's 35 min away
+    const now = new Date(2026, 0, 1, 3, 10, 0)
+    expect(getPlaylistStartTime(15 * 60, now)).toEqual(new Date(2026, 0, 1, 3, 45, 0))
+  })
+
+  it('returns now when total time is an hour or more', () => {
+    const now = new Date(2026, 0, 1, 3, 22, 0)
+    expect(getPlaylistStartTime(3600, now)).toEqual(now)
   })
 })
