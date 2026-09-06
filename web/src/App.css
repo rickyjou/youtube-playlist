@@ -102,6 +102,13 @@ body {
 .clip-field.clip-time-field input.clip-time-input {
   width: 34px;
   text-align: center;
+  -moz-appearance: textfield;
+}
+
+.clip-field.clip-time-field input.clip-time-input::-webkit-outer-spin-button,
+.clip-field.clip-time-field input.clip-time-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .clip-time-sep {
