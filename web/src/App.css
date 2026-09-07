@@ -178,6 +178,10 @@ body {
   outline-offset: 1px;
 }
 
+.input-row-field-compact {
+  flex-basis: 140px;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

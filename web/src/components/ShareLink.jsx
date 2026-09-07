@@ -38,27 +38,34 @@ export default function ShareLink({ playlist }) {
 
   return (
     <section>
-      <button
-        type="button"
-        className="btn btn-primary"
-        onClick={handleGenerate}
-        disabled={generating}
-      >
-        {generating ? 'Generating...' : 'Generate Shareable Link'}
-      </button>
-      {link && (
-        <div className="input-row">
-          <input type="text" readOnly value={link} className="input-row-field" />
-          <button type="button" className="btn btn-secondary" onClick={handleCopy}>
-            Copy Link
-          </button>
-          <button type="button" className="btn btn-secondary" onClick={handleOpen}>
-            Open in New Tab
-          </button>
-          {shortenFailed && <p>Couldn't shorten link — showing full link</p>}
-          {error && <p role="alert">{error}</p>}
-        </div>
-      )}
+      <div className="input-row">
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={handleGenerate}
+          disabled={generating}
+        >
+          {generating ? 'Generating...' : 'Generate Shareable Link'}
+        </button>
+        {link && (
+          <>
+            <input
+              type="text"
+              readOnly
+              value={link}
+              className="input-row-field input-row-field-compact"
+            />
+            <button type="button" className="btn btn-secondary" onClick={handleCopy}>
+              Copy Link
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={handleOpen}>
+              Open in New Tab
+            </button>
+          </>
+        )}
+      </div>
+      {shortenFailed && <p>Couldn't shorten link — showing full link</p>}
+      {error && <p role="alert">{error}</p>}
     </section>
   )
 }
