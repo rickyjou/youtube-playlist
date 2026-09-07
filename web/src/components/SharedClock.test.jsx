@@ -35,4 +35,39 @@ describe('SharedClock', () => {
     expect(screen.getByText('Current time: 3:10:01 AM')).toBeInTheDocument()
     expect(screen.getByText('Starts in: 34:59')).toBeInTheDocument()
   })
+
+  it('calls onReachZero once when the countdown reaches zero', () => {
+    vi.setSystemTime(new Date(2026, 0, 1, 3, 44, 58))
+    const onReachZero = vi.fn()
+    render(<SharedClock totalSeconds={15 * 60} onReachZero={onReachZero} />)
+    expect(screen.getByText('Starts in: 00:02')).toBeInTheDocument()
+
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(onReachZero).not.toHaveBeenCalled()
+
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(screen.getByText('Starts in: 00:00')).toBeInTheDocument()
+    expect(onReachZero).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(onReachZero).toHaveBeenCalledTimes(1)
+  })
+
+  it('calls onReachZero immediately when the playlist is an hour or longer', () => {
+    const onReachZero = vi.fn()
+    render(<SharedClock totalSeconds={60 * 60} onReachZero={onReachZero} />)
+
+    expect(onReachZero).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+    expect(onReachZero).toHaveBeenCalledTimes(1)
+  })
 })

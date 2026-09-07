@@ -5,8 +5,8 @@ import App from './App.jsx'
 import * as youtubeApi from './lib/youtubeApi.js'
 
 vi.mock('./components/YouTubePlayer.jsx', () => ({
-  default: ({ videoId, onEnded }) => (
-    <div data-testid="player">
+  default: ({ videoId, onEnded, autoplayToken }) => (
+    <div data-testid="player" data-autoplay-token={autoplayToken}>
       {videoId}
       <button onClick={onEnded}>simulate ended</button>
     </div>
@@ -186,6 +186,23 @@ describe('App', () => {
 
     fireEvent.click(screen.getByLabelText('Previous clip'))
     expect(screen.getByTestId('player')).toHaveTextContent('sharedvid02')
+  })
+
+  it('automatically starts playback when the shared countdown reaches zero', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 0, 1, 3, 44, 58))
+    const shared = [{ videoId: 'sharedvid01', start: 0, end: 900 }]
+    const encoded = btoa(JSON.stringify(shared))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+
+    render(<App />)
+    const initialToken = screen.getByTestId('player').dataset.autoplayToken
+
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+
+    expect(screen.getByTestId('player').dataset.autoplayToken).not.toBe(initialToken)
   })
 
   it('advances to the next clip when the player reports the current clip ended', () => {

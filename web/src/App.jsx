@@ -254,7 +254,10 @@ export default function App() {
               </button>
             </div>
           )}
-          <SharedClock totalSeconds={totalSeconds} />
+          <SharedClock
+            totalSeconds={totalSeconds}
+            onReachZero={() => setAutoplayToken((token) => token + 1)}
+          />
         </>
       ) : (
         <>
