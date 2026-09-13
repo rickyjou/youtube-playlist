@@ -1,4 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+
+const AUTOPLAY_CHECK_DELAY_MS = 1500
 
 let iframeApiPromise = null
 
@@ -26,6 +28,8 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
   const loadedAtRef = useRef(0)
   const hasPlayedRef = useRef(false)
   const lastAutoplayTokenRef = useRef(autoplayToken)
+  const autoplayCheckTimeoutRef = useRef(null)
+  const [showTapToStart, setShowTapToStart] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -49,6 +53,8 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
           onStateChange: (event) => {
             if (event.data === YT.PlayerState.PLAYING) {
               hasPlayedRef.current = true
+              clearTimeout(autoplayCheckTimeoutRef.current)
+              setShowTapToStart(false)
             }
             const spurious = Date.now() - loadedAtRef.current < 1500
             if (event.data === YT.PlayerState.ENDED && !hasEndedRef.current && !spurious) {
@@ -62,6 +68,7 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
 
     return () => {
       cancelled = true
+      clearTimeout(autoplayCheckTimeoutRef.current)
       playerRef.current?.destroy()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -76,11 +83,39 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
       if (!playerRef.current?.loadVideoById) return
       hasPlayedRef.current = true
       playerRef.current.loadVideoById({ videoId, startSeconds: start, endSeconds: end })
+      clearTimeout(autoplayCheckTimeoutRef.current)
+      if (forcePlay) {
+        // A forced autoplay (e.g. the shared-view countdown reaching zero) isn't
+        // tied to a user gesture, so the browser may silently refuse to play it.
+        // Fall back to a manual prompt if it doesn't actually start.
+        autoplayCheckTimeoutRef.current = setTimeout(() => {
+          const state = playerRef.current?.getPlayerState?.()
+          const YT = window.YT
+          if (state !== YT?.PlayerState?.PLAYING && state !== YT?.PlayerState?.BUFFERING) {
+            setShowTapToStart(true)
+          }
+        }, AUTOPLAY_CHECK_DELAY_MS)
+      }
     } else {
       if (!playerRef.current?.cueVideoById) return
       playerRef.current.cueVideoById({ videoId, startSeconds: start, endSeconds: end })
     }
   }, [videoId, start, end, autoplayToken])
 
-  return <div ref={containerRef} className="player-frame" />
+  function handleTapToStart() {
+    clearTimeout(autoplayCheckTimeoutRef.current)
+    setShowTapToStart(false)
+    playerRef.current?.playVideo?.()
+  }
+
+  return (
+    <div className="player-frame">
+      <div ref={containerRef} />
+      {showTapToStart && (
+        <button type="button" className="tap-to-start-btn" onClick={handleTapToStart}>
+          ▶ Tap to start
+        </button>
+      )}
+    </div>
+  )
 }

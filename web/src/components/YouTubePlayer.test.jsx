@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react'
+import { render, waitFor, screen, act, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import YouTubePlayer from './YouTubePlayer.jsx'
 
@@ -11,11 +11,13 @@ describe('YouTubePlayer', () => {
       this.config = config
       this.cueVideoById = vi.fn()
       this.loadVideoById = vi.fn()
+      this.playVideo = vi.fn()
+      this.getPlayerState = vi.fn(() => window.YT.PlayerState.PAUSED)
       this.destroy = vi.fn()
     })
     window.YT = {
       Player: PlayerMock,
-      PlayerState: { ENDED: 0, PLAYING: 1 },
+      PlayerState: { ENDED: 0, PLAYING: 1, PAUSED: 2, BUFFERING: 3 },
     }
     now = 1_000_000
     vi.spyOn(Date, 'now').mockImplementation(() => now)
@@ -139,5 +141,76 @@ describe('YouTubePlayer', () => {
     config.events.onStateChange({ data: window.YT.PlayerState.ENDED })
 
     expect(onEnded).toHaveBeenCalledTimes(2)
+  })
+
+  describe('tap-to-start fallback', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('shows a tap-to-start prompt if a forced autoplay does not actually start playing', async () => {
+      const { rerender } = render(
+        <YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={0} />,
+      )
+      await waitFor(() => expect(PlayerMock).toHaveBeenCalledTimes(1))
+
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      rerender(<YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={1} />)
+
+      const instance = PlayerMock.mock.instances[0]
+      expect(instance.loadVideoById).toHaveBeenCalledWith({
+        videoId: 'abc123',
+        startSeconds: 5,
+        endSeconds: 50,
+      })
+      expect(screen.queryByText(/tap to start/i)).not.toBeInTheDocument()
+
+      act(() => {
+        vi.advanceTimersByTime(1500)
+      })
+
+      expect(screen.getByText(/tap to start/i)).toBeInTheDocument()
+    })
+
+    it('does not show the tap-to-start prompt if playback actually starts in time', async () => {
+      const { rerender } = render(
+        <YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={0} />,
+      )
+      await waitFor(() => expect(PlayerMock).toHaveBeenCalledTimes(1))
+
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      rerender(<YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={1} />)
+
+      const [, config] = PlayerMock.mock.calls[0]
+      act(() => {
+        config.events.onStateChange({ data: window.YT.PlayerState.PLAYING })
+      })
+
+      act(() => {
+        vi.advanceTimersByTime(1500)
+      })
+
+      expect(screen.queryByText(/tap to start/i)).not.toBeInTheDocument()
+    })
+
+    it('calls playVideo and hides the prompt when tapped', async () => {
+      const { rerender } = render(
+        <YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={0} />,
+      )
+      await waitFor(() => expect(PlayerMock).toHaveBeenCalledTimes(1))
+
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      rerender(<YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={1} />)
+      act(() => {
+        vi.advanceTimersByTime(1500)
+      })
+      const button = screen.getByText(/tap to start/i)
+
+      const instance = PlayerMock.mock.instances[0]
+      fireEvent.click(button)
+
+      expect(instance.playVideo).toHaveBeenCalledTimes(1)
+      expect(screen.queryByText(/tap to start/i)).not.toBeInTheDocument()
+    })
   })
 })

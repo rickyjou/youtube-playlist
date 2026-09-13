@@ -277,6 +277,31 @@ body {
   height: 100% !important;
 }
 
+.tap-to-start-btn {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: fit-content;
+  height: fit-content;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 24px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transition);
+}
+
+.tap-to-start-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+}
+
 .player-nav {
   position: absolute;
   top: 50%;

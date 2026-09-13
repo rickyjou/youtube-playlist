@@ -10,6 +10,7 @@ import {
 export default function SharedClock({ totalSeconds, onReachZero }) {
   const [now, setNow] = useState(() => new Date())
   const hasFiredRef = useRef(false)
+  const prevSecondsRef = useRef(null)
   const secondsUntilStart = secondsUntilPlaylistStart(totalSeconds, now)
 
   useEffect(() => {
@@ -18,7 +19,13 @@ export default function SharedClock({ totalSeconds, onReachZero }) {
   }, [])
 
   useEffect(() => {
-    if (secondsUntilStart === 0 && !hasFiredRef.current) {
+    const prev = prevSecondsRef.current
+    // A backgrounded/throttled tab can skip the single tick where the countdown
+    // hits exactly 0. Detect that we passed it anyway by noticing the countdown
+    // jumped back up (wrapped) instead of continuing to count down.
+    const wrapped = prev !== null && secondsUntilStart > prev
+    prevSecondsRef.current = secondsUntilStart
+    if ((secondsUntilStart === 0 || wrapped) && !hasFiredRef.current) {
       hasFiredRef.current = true
       onReachZero?.()
     }

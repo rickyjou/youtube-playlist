@@ -70,4 +70,26 @@ describe('SharedClock', () => {
     })
     expect(onReachZero).toHaveBeenCalledTimes(1)
   })
+
+  it('still calls onReachZero once if a throttled/backgrounded tab misses the exact zero tick', () => {
+    vi.setSystemTime(new Date(2026, 0, 1, 3, 44, 55))
+    const onReachZero = vi.fn()
+    render(<SharedClock totalSeconds={15 * 60} onReachZero={onReachZero} />)
+    expect(screen.getByText('Starts in: 00:05')).toBeInTheDocument()
+
+    // Simulate a background tab whose timer got throttled: real time jumps well
+    // past the moment the countdown would have hit exactly 0 before the next
+    // tick actually fires.
+    vi.setSystemTime(new Date(2026, 0, 1, 3, 45, 10))
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+
+    expect(onReachZero).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(onReachZero).toHaveBeenCalledTimes(1)
+  })
 })
