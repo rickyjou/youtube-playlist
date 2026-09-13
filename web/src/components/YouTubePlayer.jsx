@@ -42,6 +42,7 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
         playerVars: {
           start: clipRef.current.start,
           end: clipRef.current.end,
+          playsinline: 1,
           ...(disableNativeFullscreen ? { fs: 0 } : {}),
         },
         events: {

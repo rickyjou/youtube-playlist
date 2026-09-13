@@ -35,7 +35,7 @@ describe('YouTubePlayer', () => {
     await waitFor(() => expect(PlayerMock).toHaveBeenCalledTimes(1))
     const [, config] = PlayerMock.mock.calls[0]
     expect(config.videoId).toBe('abc123')
-    expect(config.playerVars).toEqual({ start: 5, end: 50 })
+    expect(config.playerVars).toEqual({ start: 5, end: 50, playsinline: 1 })
   })
 
   it('hides the native fullscreen button when disableNativeFullscreen is set', async () => {
@@ -43,7 +43,7 @@ describe('YouTubePlayer', () => {
 
     await waitFor(() => expect(PlayerMock).toHaveBeenCalledTimes(1))
     const [, config] = PlayerMock.mock.calls[0]
-    expect(config.playerVars).toEqual({ start: 5, end: 50, fs: 0 })
+    expect(config.playerVars).toEqual({ start: 5, end: 50, playsinline: 1, fs: 0 })
   })
 
   it('cues (rather than autoplays) a new clip before the player has ever played', async () => {
