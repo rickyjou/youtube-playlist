@@ -11,15 +11,15 @@ describe('shortenUrl', () => {
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
-        text: () => Promise.resolve('https://tinyurl.com/abc123'),
+        text: () => Promise.resolve('https://da.gd/abc123\n'),
       }),
     )
 
     const result = await shortenUrl('https://example.com/very/long/path?playlist=abc')
 
-    expect(result).toBe('https://tinyurl.com/abc123')
+    expect(result).toBe('https://da.gd/abc123')
     expect(fetch).toHaveBeenCalledWith(
-      'https://tinyurl.com/api-create.php?url=' +
+      'https://da.gd/s?url=' +
         encodeURIComponent('https://example.com/very/long/path?playlist=abc'),
     )
   })

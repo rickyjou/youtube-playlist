@@ -21,7 +21,7 @@ describe('ShareLink', () => {
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
-        text: () => Promise.resolve('https://tinyurl.com/abc123'),
+        text: () => Promise.resolve('https://da.gd/abc123'),
       }),
     )
   })
@@ -39,7 +39,7 @@ describe('ShareLink', () => {
     render(<ShareLink playlist={playlist} />)
     await generate()
 
-    expect(screen.getByRole('textbox').value).toBe('https://tinyurl.com/abc123')
+    expect(screen.getByRole('textbox').value).toBe('https://da.gd/abc123')
   })
 
   it('falls back to the long link and shows a note when shortening fails', async () => {
@@ -59,7 +59,7 @@ describe('ShareLink', () => {
       fireEvent.click(screen.getByText('Copy Link'))
     })
 
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://tinyurl.com/abc123')
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://da.gd/abc123')
   })
 
   it('opens the generated link in a reusable named tab without leaking window.opener', async () => {
@@ -109,7 +109,7 @@ describe('ShareLink', () => {
 
     expect(screen.getByText('Generating...')).toBeDisabled()
 
-    resolveFetch({ ok: true, text: () => Promise.resolve('https://tinyurl.com/abc123') })
+    resolveFetch({ ok: true, text: () => Promise.resolve('https://da.gd/abc123') })
     await waitFor(() => expect(screen.getByRole('textbox')).toBeInTheDocument())
   })
 })
