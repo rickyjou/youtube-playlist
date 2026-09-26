@@ -408,8 +408,10 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #000;
+  /* Light tint so the cued video stays visible behind the countdown. */
+  background: rgba(0, 0, 0, 0.35);
   color: #fff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
   font-variant-numeric: tabular-nums;
 }
 
