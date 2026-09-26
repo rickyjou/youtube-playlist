@@ -143,6 +143,23 @@ body {
   gap: 8px;
 }
 
+.top-bar button {
+  flex: 0 0 auto;
+}
+
+.page-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  font-size: 13px;
+}
+
+.app-version {
+  opacity: 0.7;
+}
+
 .add-clip-form {
   display: flex;
   flex-direction: column;

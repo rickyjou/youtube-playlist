@@ -206,9 +206,7 @@ export default function App() {
   return (
     <div>
       <div className="top-bar">
-        <a href="https://github.com/rickyjou/youtube-playlist" rel="noopener noreferrer">
-          Github Repository
-        </a>
+        <h1>YouTube Playlist Duration Calculator & Player</h1>
         <button
           type="button"
           className="btn btn-secondary btn-icon"
@@ -218,7 +216,6 @@ export default function App() {
           {effectiveTheme === 'dark' ? '☀️' : '🌙'}
         </button>
       </div>
-      <h1>YouTube Playlist Duration Calculator & Player</h1>
       {isSharedView ? (
         <>
           {player && (
@@ -276,6 +273,14 @@ export default function App() {
             <RawJsonPanel playlist={playlist} onReplacePlaylist={handleReplacePlaylist} onReset={handleReset} />
           </div>
         </>
+      )}
+      {!isSharedView && (
+        <footer className="page-footer">
+          <a href="https://github.com/rickyjou/youtube-playlist" rel="noopener noreferrer">
+            Github Repository
+          </a>
+          <span className="app-version">{__APP_VERSION__}</span>
+        </footer>
       )}
     </div>
   )

@@ -35,6 +35,25 @@ describe('App', () => {
     expect(screen.getByText('Github Repository')).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
+  it('shows the build version next to the GitHub link in the footer of the editor', () => {
+    render(<App />)
+    const footer = screen.getByRole('contentinfo')
+    expect(footer).toContainElement(screen.getByText('Github Repository'))
+    expect(footer).toHaveTextContent(__APP_VERSION__)
+    expect(__APP_VERSION__).toMatch(/^v\d{4}\.\d{2}\.\d{2}-\d{4} \(build \w+\)$/)
+  })
+
+  it('shows no footer, GitHub link, or build version on a shared playlist page', () => {
+    const encoded = btoa(JSON.stringify([{ videoId: 'sharedvid01', start: 0, end: 20 }]))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+
+    render(<App />)
+
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
+    expect(screen.queryByText('Github Repository')).not.toBeInTheDocument()
+    expect(screen.queryByText(__APP_VERSION__)).not.toBeInTheDocument()
+  })
+
   it('starts with the default demo playlist when no share link is present', () => {
     render(<App />)
     expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
