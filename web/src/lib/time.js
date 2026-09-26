@@ -38,15 +38,6 @@ export function getPlaylistStartTime(totalSeconds, now) {
   return new Date(now.getTime() + secondsUntilPlaylistStart(totalSeconds, now) * 1000)
 }
 
-// Seconds since this hour's run of the playlist started, or null if it isn't
-// running right now. Playlists shorter than an hour end at the top of the hour.
-export function secondsSincePlaylistStart(totalSeconds, now) {
-  if (totalSeconds <= 0 || totalSeconds >= SECONDS_PER_HOUR) return null
-  const secondsIntoHour = now.getMinutes() * 60 + now.getSeconds()
-  const elapsed = secondsIntoHour - (SECONDS_PER_HOUR - totalSeconds)
-  return elapsed >= 0 ? elapsed : null
-}
-
 // Which clip is playing, and from where, once elapsedSeconds of the playlist
 // have passed. Returns null when the whole playlist has already played.
 export function locatePlaylistPosition(playlist, elapsedSeconds) {

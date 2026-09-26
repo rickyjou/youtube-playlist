@@ -191,13 +191,13 @@ describe('SharedClock', () => {
     expect(onReachZero).toHaveBeenCalledTimes(1)
   })
 
-  it('fires right away, with the time already elapsed, when opened while the playlist is running', () => {
+  it('waits for the next run when opened while the playlist is running', () => {
     vi.setSystemTime(new Date(2026, 0, 1, 3, 52, 30))
     const onReachZero = vi.fn()
     render(<SharedClock totalSeconds={15 * 60} onReachZero={onReachZero} />)
 
-    expect(onReachZero).toHaveBeenCalledTimes(1)
-    expect(onReachZero).toHaveBeenCalledWith(7 * 60 + 30)
+    expect(onReachZero).not.toHaveBeenCalled()
+    expect(screen.getByText('Starts in: 52:30')).toBeInTheDocument()
   })
 
   it('waits for the next start when opened right after the playlist ended', () => {

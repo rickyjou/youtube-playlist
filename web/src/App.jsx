@@ -42,10 +42,9 @@ export default function App() {
   const [metadata, setMetadata] = useState({})
   const [theme, setTheme] = useState(getStoredTheme)
   const [autoplayToken, setAutoplayToken] = useState(0)
-  // Where to start a clip when joining a shared playlist partway through:
-  // { index, start }. Cleared as soon as playback moves to another clip.
+  // Where to start a clip when the countdown fired late: { index, start }. Cleared as soon as playback moves to another clip.
   const [joinPosition, setJoinPosition] = useState(null)
-  const [hasStarted, setHasStarted] = useState(false)
+  const [countdownFinished, setCountdownFinished] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showFullscreenControls, setShowFullscreenControls] = useState(true)
   const playerWrapperRef = useRef(null)
@@ -190,11 +189,14 @@ export default function App() {
   }
 
   function handleReachZero(secondsLate) {
-    // The countdown can fire late (throttled timer, page opened mid-playlist),
-    // so start wherever the playlist should be by now to stay in sync.
+    setCountdownFinished(true)
+    // Autoplay only for a host presenting in fullscreen; entering fullscreen
+    // took a click, which is also what lets the browser play with sound.
+    if (!isFullscreen) return
+    // A throttled timer can fire late, so start wherever the playlist should
+    // be by now to stay in sync.
     const position = locatePlaylistPosition(playlist, secondsLate)
     if (!position) return
-    setHasStarted(true)
     setJoinPosition(position)
     setCurrentIndex(position.index)
     setAutoplayToken((token) => token + 1)
@@ -244,7 +246,7 @@ export default function App() {
               onMouseMove={handlePlayerMouseMove}
             >
               {player}
-              {isFullscreen && !hasStarted && <CountdownOverlay totalSeconds={totalSeconds} />}
+              {isFullscreen && !countdownFinished && <CountdownOverlay totalSeconds={totalSeconds} />}
               <button
                 type="button"
                 className="player-nav player-nav-prev"
@@ -271,7 +273,7 @@ export default function App() {
               </button>
             </div>
           )}
-          {player && !isFullscreen && !hasStarted && (
+          {player && !isFullscreen && !countdownFinished && (
             // Entering fullscreen needs a click, and that same click lets the
             // browser autoplay with sound when the countdown reaches zero.
             <button type="button" className="btn btn-primary go-fullscreen-btn" onClick={handleToggleFullscreen}>

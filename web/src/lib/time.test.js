@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
   locatePlaylistPosition,
-  secondsSincePlaylistStart,
   formatTime,
   calculateTotalSeconds,
   formatClockTime,
@@ -105,28 +104,6 @@ describe('getPlaylistStartTime', () => {
   it('returns now when total time is an hour or more', () => {
     const now = new Date(2026, 0, 1, 3, 22, 0)
     expect(getPlaylistStartTime(3600, now)).toEqual(now)
-  })
-})
-
-describe('secondsSincePlaylistStart', () => {
-  // A 15 min playlist runs from :45 until the top of the hour.
-  it('returns null before the playlist starts', () => {
-    expect(secondsSincePlaylistStart(15 * 60, new Date(2026, 0, 1, 3, 44, 59))).toBeNull()
-  })
-
-  it('returns 0 at the start and the elapsed seconds while it runs', () => {
-    expect(secondsSincePlaylistStart(15 * 60, new Date(2026, 0, 1, 3, 45, 0))).toBe(0)
-    expect(secondsSincePlaylistStart(15 * 60, new Date(2026, 0, 1, 3, 52, 30))).toBe(7 * 60 + 30)
-    expect(secondsSincePlaylistStart(15 * 60, new Date(2026, 0, 1, 3, 59, 59))).toBe(15 * 60 - 1)
-  })
-
-  it('returns null once the playlist has ended at the top of the hour', () => {
-    expect(secondsSincePlaylistStart(15 * 60, new Date(2026, 0, 1, 4, 0, 0))).toBeNull()
-  })
-
-  it('returns null for an empty playlist or one an hour or longer', () => {
-    expect(secondsSincePlaylistStart(0, new Date(2026, 0, 1, 3, 30, 0))).toBeNull()
-    expect(secondsSincePlaylistStart(3600, new Date(2026, 0, 1, 3, 30, 0))).toBeNull()
   })
 })
 

@@ -4,7 +4,6 @@ import {
   formatCountdown,
   formatTime,
   getPlaylistStartTime,
-  secondsSincePlaylistStart,
   secondsUntilPlaylistStart,
 } from '../lib/time.js'
 
@@ -19,14 +18,8 @@ export default function SharedClock({ totalSeconds, onReachZero }) {
 
   useEffect(() => {
     const mountedAt = new Date()
-    const wholeSecond = Math.floor(mountedAt.getTime() / 1000) * 1000
-    // Opened while the playlist is running: its start already passed, so fire
-    // right away and report how far in it is, rather than wait for the next run.
-    const elapsed = secondsSincePlaylistStart(totalSeconds, mountedAt)
     const startAt =
-      elapsed !== null
-        ? wholeSecond - elapsed * 1000
-        : wholeSecond + secondsUntilPlaylistStart(totalSeconds, mountedAt) * 1000
+      Math.floor(mountedAt.getTime() / 1000) * 1000 + secondsUntilPlaylistStart(totalSeconds, mountedAt) * 1000
     let timeoutId
 
     // The timeout aimed at startAt is what guarantees firing; a throttled

@@ -231,21 +231,101 @@ describe('App', () => {
     expect(screen.getByTestId('player')).toHaveTextContent('sharedvid02')
   })
 
-  it('automatically starts playback when the shared countdown reaches zero', () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date(2026, 0, 1, 3, 44, 58))
-    const shared = [{ videoId: 'sharedvid01', start: 0, end: 900 }]
-    const encoded = btoa(JSON.stringify(shared))
-    window.history.pushState({}, '', `/?playlist=${encoded}`)
+  describe('shared-view autoplay', () => {
+    const FIFTEEN_MIN = [{ videoId: 'sharedvid01', start: 0, end: 900 }] // runs 3:45-4:00
+    const TWO_CLIPS = [
+      { videoId: 'sharedvid01', start: 0, end: 300 },
+      { videoId: 'sharedvid02', start: 10, end: 610 },
+    ] // 15 min total, runs 3:45-4:00
 
-    render(<App />)
-    const initialToken = screen.getByTestId('player').dataset.autoplayToken
+    function openSharedLinkAt(time, playlist = FIFTEEN_MIN) {
+      vi.useFakeTimers()
+      vi.setSystemTime(time)
+      window.history.pushState({}, '', `/?playlist=${btoa(JSON.stringify(playlist))}`)
+      HTMLElement.prototype.requestFullscreen = vi.fn()
+      const result = render(<App />)
+      return { ...result, wrapper: result.container.querySelector('.player-wrapper') }
+    }
 
-    act(() => {
-      vi.advanceTimersByTime(2000)
+    function setFullscreen(element) {
+      Object.defineProperty(document, 'fullscreenElement', { value: element, configurable: true })
+      fireEvent(document, new Event('fullscreenchange'))
+    }
+
+    const autoplayToken = () => screen.getByTestId('player').dataset.autoplayToken
+
+    afterEach(() => {
+      Object.defineProperty(document, 'fullscreenElement', { value: null, configurable: true })
     })
 
-    expect(screen.getByTestId('player').dataset.autoplayToken).not.toBe(initialToken)
+    it('autoplays when the countdown reaches zero in fullscreen', () => {
+      const { wrapper } = openSharedLinkAt(new Date(2026, 0, 1, 3, 44, 58))
+      setFullscreen(wrapper)
+
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+
+      expect(autoplayToken()).toBe('1')
+    })
+
+    it('does not autoplay when the countdown reaches zero outside fullscreen', () => {
+      openSharedLinkAt(new Date(2026, 0, 1, 3, 44, 58))
+
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+
+      expect(autoplayToken()).toBe('0')
+    })
+
+    it('does not autoplay when opened while the playlist is running, and counts down to the next run', () => {
+      const { wrapper } = openSharedLinkAt(new Date(2026, 0, 1, 3, 52, 30))
+      setFullscreen(wrapper)
+
+      expect(autoplayToken()).toBe('0')
+      expect(wrapper.querySelector('.countdown-overlay')).toHaveTextContent('52:30')
+    })
+
+    it('does not autoplay on opening a playlist an hour or longer', () => {
+      openSharedLinkAt(new Date(2026, 0, 1, 3, 20, 0), [{ videoId: 'sharedvid01', start: 0, end: 3600 }])
+
+      expect(autoplayToken()).toBe('0')
+    })
+
+    it('starts where the playlist should be if zero was reached late in fullscreen', () => {
+      const { wrapper } = openSharedLinkAt(new Date(2026, 0, 1, 3, 44, 58), TWO_CLIPS)
+      setFullscreen(wrapper)
+
+      // A throttled window: time passes the start before any timer runs.
+      vi.setSystemTime(new Date(2026, 0, 1, 3, 46, 0))
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+
+      expect(autoplayToken()).toBe('1')
+      expect(screen.getByTestId('player')).toHaveTextContent('sharedvid01')
+      expect(screen.getByTestId('player').dataset.start).toBe('61')
+
+      fireEvent.click(screen.getByText('simulate ended'))
+      expect(screen.getByTestId('player')).toHaveTextContent('sharedvid02')
+      expect(screen.getByTestId('player').dataset.start).toBe('10')
+    })
+
+    it('plays a clip from its own start after using next/previous following a late start', () => {
+      const { wrapper } = openSharedLinkAt(new Date(2026, 0, 1, 3, 44, 58), TWO_CLIPS)
+      setFullscreen(wrapper)
+      vi.setSystemTime(new Date(2026, 0, 1, 3, 46, 0))
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+
+      fireEvent.click(screen.getByLabelText('Next clip'))
+      fireEvent.click(screen.getByLabelText('Previous clip'))
+
+      expect(screen.getByTestId('player')).toHaveTextContent('sharedvid01')
+      expect(screen.getByTestId('player').dataset.start).toBe('0')
+    })
   })
 
   describe('fullscreen countdown', () => {
@@ -282,7 +362,7 @@ describe('App', () => {
       expect(screen.queryByRole('button', { name: /go fullscreen/i })).not.toBeInTheDocument()
     })
 
-    it('hides Go fullscreen once in fullscreen, and once playback has started', () => {
+    it('hides Go fullscreen once in fullscreen, and once the countdown has finished', () => {
       const { wrapper } = openSharedLinkAt(new Date(2026, 0, 1, 3, 44, 58))
 
       enterFullscreen(wrapper)
@@ -318,68 +398,6 @@ describe('App', () => {
       expect(wrapper.querySelector('.countdown-overlay')).not.toBeInTheDocument()
       expect(screen.getByTestId('player').dataset.autoplayToken).toBe('1')
     })
-
-    it('shows no countdown overlay when fullscreened after joining a running playlist', () => {
-      const { wrapper } = openSharedLinkAt(new Date(2026, 0, 1, 3, 50, 0))
-
-      enterFullscreen(wrapper)
-
-      expect(wrapper.querySelector('.countdown-overlay')).not.toBeInTheDocument()
-    })
-  })
-
-  it('joins partway through when the shared link is opened while the playlist is running', () => {
-    vi.useFakeTimers()
-    // Two clips totalling 15 min run from 3:45 to 4:00; at 3:52:30 we are
-    // 7:30 in, i.e. 1:30 into the second clip (which starts at 0:10).
-    vi.setSystemTime(new Date(2026, 0, 1, 3, 52, 30))
-    const shared = [
-      { videoId: 'sharedvid01', start: 0, end: 360 },
-      { videoId: 'sharedvid02', start: 10, end: 550 },
-    ]
-    window.history.pushState({}, '', `/?playlist=${btoa(JSON.stringify(shared))}`)
-
-    render(<App />)
-
-    const player = screen.getByTestId('player')
-    expect(player).toHaveTextContent('sharedvid02')
-    expect(player.dataset.start).toBe('100')
-    expect(player.dataset.autoplayToken).toBe('1')
-  })
-
-  it('plays later clips from their own start after joining partway through', () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date(2026, 0, 1, 3, 46, 0))
-    const shared = [
-      { videoId: 'sharedvid01', start: 0, end: 300 },
-      { videoId: 'sharedvid02', start: 10, end: 610 },
-    ]
-    window.history.pushState({}, '', `/?playlist=${btoa(JSON.stringify(shared))}`)
-
-    render(<App />)
-    expect(screen.getByTestId('player').dataset.start).toBe('60')
-
-    fireEvent.click(screen.getByText('simulate ended'))
-
-    expect(screen.getByTestId('player')).toHaveTextContent('sharedvid02')
-    expect(screen.getByTestId('player').dataset.start).toBe('10')
-  })
-
-  it('plays a clip from its own start after using next/previous following a join', () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date(2026, 0, 1, 3, 46, 0))
-    const shared = [
-      { videoId: 'sharedvid01', start: 0, end: 300 },
-      { videoId: 'sharedvid02', start: 10, end: 610 },
-    ]
-    window.history.pushState({}, '', `/?playlist=${btoa(JSON.stringify(shared))}`)
-
-    render(<App />)
-    fireEvent.click(screen.getByLabelText('Next clip'))
-    fireEvent.click(screen.getByLabelText('Previous clip'))
-
-    expect(screen.getByTestId('player')).toHaveTextContent('sharedvid01')
-    expect(screen.getByTestId('player').dataset.start).toBe('0')
   })
 
   it('advances to the next clip when the player reports the current clip ended', () => {
