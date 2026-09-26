@@ -248,6 +248,86 @@ describe('App', () => {
     expect(screen.getByTestId('player').dataset.autoplayToken).not.toBe(initialToken)
   })
 
+  describe('fullscreen countdown', () => {
+    function openSharedLinkAt(time) {
+      vi.useFakeTimers()
+      vi.setSystemTime(time)
+      const shared = [{ videoId: 'sharedvid01', start: 0, end: 900 }] // runs 3:45-4:00
+      window.history.pushState({}, '', `/?playlist=${btoa(JSON.stringify(shared))}`)
+      HTMLElement.prototype.requestFullscreen = vi.fn()
+      const result = render(<App />)
+      return { ...result, wrapper: result.container.querySelector('.player-wrapper') }
+    }
+
+    function enterFullscreen(wrapper) {
+      Object.defineProperty(document, 'fullscreenElement', { value: wrapper, configurable: true })
+      fireEvent(document, new Event('fullscreenchange'))
+    }
+
+    afterEach(() => {
+      Object.defineProperty(document, 'fullscreenElement', { value: null, configurable: true })
+    })
+
+    it('offers a Go fullscreen button before the start that fullscreens the player', () => {
+      const { wrapper } = openSharedLinkAt(new Date(2026, 0, 1, 3, 40, 0))
+
+      fireEvent.click(screen.getByRole('button', { name: /go fullscreen/i }))
+
+      expect(HTMLElement.prototype.requestFullscreen).toHaveBeenCalledTimes(1)
+      expect(HTMLElement.prototype.requestFullscreen.mock.contexts[0]).toBe(wrapper)
+    })
+
+    it('does not offer Go fullscreen in the editor', () => {
+      render(<App />)
+      expect(screen.queryByRole('button', { name: /go fullscreen/i })).not.toBeInTheDocument()
+    })
+
+    it('hides Go fullscreen once in fullscreen, and once playback has started', () => {
+      const { wrapper } = openSharedLinkAt(new Date(2026, 0, 1, 3, 44, 58))
+
+      enterFullscreen(wrapper)
+      expect(screen.queryByRole('button', { name: /go fullscreen/i })).not.toBeInTheDocument()
+
+      Object.defineProperty(document, 'fullscreenElement', { value: null, configurable: true })
+      fireEvent(document, new Event('fullscreenchange'))
+      expect(screen.getByRole('button', { name: /go fullscreen/i })).toBeInTheDocument()
+
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+      expect(screen.queryByRole('button', { name: /go fullscreen/i })).not.toBeInTheDocument()
+    })
+
+    it('shows a live countdown over the player in fullscreen until playback starts', () => {
+      const { wrapper } = openSharedLinkAt(new Date(2026, 0, 1, 3, 44, 57))
+      expect(wrapper.querySelector('.countdown-overlay')).not.toBeInTheDocument()
+
+      enterFullscreen(wrapper)
+      const overlay = wrapper.querySelector('.countdown-overlay')
+      expect(overlay).toHaveTextContent('Starts in')
+      expect(overlay).toHaveTextContent('00:03')
+
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+      expect(overlay).toHaveTextContent('00:02')
+
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+      expect(wrapper.querySelector('.countdown-overlay')).not.toBeInTheDocument()
+      expect(screen.getByTestId('player').dataset.autoplayToken).toBe('1')
+    })
+
+    it('shows no countdown overlay when fullscreened after joining a running playlist', () => {
+      const { wrapper } = openSharedLinkAt(new Date(2026, 0, 1, 3, 50, 0))
+
+      enterFullscreen(wrapper)
+
+      expect(wrapper.querySelector('.countdown-overlay')).not.toBeInTheDocument()
+    })
+  })
+
   it('joins partway through when the shared link is opened while the playlist is running', () => {
     vi.useFakeTimers()
     // Two clips totalling 15 min run from 3:45 to 4:00; at 3:52:30 we are

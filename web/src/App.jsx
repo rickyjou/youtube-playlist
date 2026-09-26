@@ -5,6 +5,7 @@ import AddClipInput from './components/AddClipInput.jsx'
 import RawJsonPanel from './components/RawJsonPanel.jsx'
 import ShareLink from './components/ShareLink.jsx'
 import SharedClock from './components/SharedClock.jsx'
+import CountdownOverlay from './components/CountdownOverlay.jsx'
 import { decodePlaylistFromUrl } from './lib/shareUrl.js'
 import { withClipIds } from './lib/clipIds.js'
 import { calculateTotalSeconds, locatePlaylistPosition } from './lib/time.js'
@@ -44,6 +45,7 @@ export default function App() {
   // Where to start a clip when joining a shared playlist partway through:
   // { index, start }. Cleared as soon as playback moves to another clip.
   const [joinPosition, setJoinPosition] = useState(null)
+  const [hasStarted, setHasStarted] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showFullscreenControls, setShowFullscreenControls] = useState(true)
   const playerWrapperRef = useRef(null)
@@ -192,6 +194,7 @@ export default function App() {
     // so start wherever the playlist should be by now to stay in sync.
     const position = locatePlaylistPosition(playlist, secondsLate)
     if (!position) return
+    setHasStarted(true)
     setJoinPosition(position)
     setCurrentIndex(position.index)
     setAutoplayToken((token) => token + 1)
@@ -241,6 +244,7 @@ export default function App() {
               onMouseMove={handlePlayerMouseMove}
             >
               {player}
+              {isFullscreen && !hasStarted && <CountdownOverlay totalSeconds={totalSeconds} />}
               <button
                 type="button"
                 className="player-nav player-nav-prev"
@@ -266,6 +270,13 @@ export default function App() {
                 {isFullscreen ? '⤡' : '⤢'}
               </button>
             </div>
+          )}
+          {player && !isFullscreen && !hasStarted && (
+            // Entering fullscreen needs a click, and that same click lets the
+            // browser autoplay with sound when the countdown reaches zero.
+            <button type="button" className="btn btn-primary go-fullscreen-btn" onClick={handleToggleFullscreen}>
+              ⤢ Go fullscreen
+            </button>
           )}
           <SharedClock
             totalSeconds={totalSeconds}
