@@ -29,7 +29,26 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
   const hasPlayedRef = useRef(false)
   const lastAutoplayTokenRef = useRef(autoplayToken)
   const autoplayCheckTimeoutRef = useRef(null)
+  const pendingForcedPlayRef = useRef(false)
   const [showTapToStart, setShowTapToStart] = useState(false)
+
+  function startForcedPlay(player) {
+    const { videoId, start, end } = clipRef.current
+    hasPlayedRef.current = true
+    loadedAtRef.current = Date.now()
+    player.loadVideoById({ videoId, startSeconds: start, endSeconds: end })
+    // A forced autoplay (e.g. the shared-view countdown reaching zero) isn't
+    // tied to a user gesture, so the browser may silently refuse to play it.
+    // Fall back to a manual prompt if it doesn't actually start.
+    clearTimeout(autoplayCheckTimeoutRef.current)
+    autoplayCheckTimeoutRef.current = setTimeout(() => {
+      const state = playerRef.current?.getPlayerState?.()
+      const YT = window.YT
+      if (state !== YT?.PlayerState?.PLAYING && state !== YT?.PlayerState?.BUFFERING) {
+        setShowTapToStart(true)
+      }
+    }, AUTOPLAY_CHECK_DELAY_MS)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -50,6 +69,14 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
           ...(disableNativeFullscreen ? { fs: 0 } : {}),
         },
         events: {
+          onReady: (event) => {
+            // A forced play requested before the player could accept commands
+            // (API still loading, or player not ready yet) would otherwise be lost.
+            if (pendingForcedPlayRef.current) {
+              pendingForcedPlayRef.current = false
+              startForcedPlay(event.target)
+            }
+          },
           onStateChange: (event) => {
             if (event.data === YT.PlayerState.PLAYING) {
               hasPlayedRef.current = true
@@ -79,26 +106,17 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
     loadedAtRef.current = Date.now()
     const forcePlay = autoplayToken !== undefined && autoplayToken !== lastAutoplayTokenRef.current
     lastAutoplayTokenRef.current = autoplayToken
-    if (hasPlayedRef.current || forcePlay) {
-      if (!playerRef.current?.loadVideoById) return
-      hasPlayedRef.current = true
-      playerRef.current.loadVideoById({ videoId, startSeconds: start, endSeconds: end })
-      clearTimeout(autoplayCheckTimeoutRef.current)
-      if (forcePlay) {
-        // A forced autoplay (e.g. the shared-view countdown reaching zero) isn't
-        // tied to a user gesture, so the browser may silently refuse to play it.
-        // Fall back to a manual prompt if it doesn't actually start.
-        autoplayCheckTimeoutRef.current = setTimeout(() => {
-          const state = playerRef.current?.getPlayerState?.()
-          const YT = window.YT
-          if (state !== YT?.PlayerState?.PLAYING && state !== YT?.PlayerState?.BUFFERING) {
-            setShowTapToStart(true)
-          }
-        }, AUTOPLAY_CHECK_DELAY_MS)
+    const player = playerRef.current
+    if (forcePlay) {
+      if (player?.loadVideoById) {
+        startForcedPlay(player)
+      } else {
+        pendingForcedPlayRef.current = true
       }
+    } else if (hasPlayedRef.current) {
+      player?.loadVideoById?.({ videoId, startSeconds: start, endSeconds: end })
     } else {
-      if (!playerRef.current?.cueVideoById) return
-      playerRef.current.cueVideoById({ videoId, startSeconds: start, endSeconds: end })
+      player?.cueVideoById?.({ videoId, startSeconds: start, endSeconds: end })
     }
   }, [videoId, start, end, autoplayToken])
 

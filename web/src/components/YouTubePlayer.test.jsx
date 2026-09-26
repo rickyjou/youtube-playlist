@@ -143,6 +143,108 @@ describe('YouTubePlayer', () => {
     expect(onEnded).toHaveBeenCalledTimes(2)
   })
 
+  describe('forced autoplay requested before the player is ready', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('plays once the player becomes ready if the request arrived while its methods were not yet available', async () => {
+      // The real YT.Player only exposes loadVideoById etc. after onReady fires.
+      PlayerMock.mockImplementation(function (element, config) {
+        this.config = config
+        this.destroy = vi.fn()
+        this.becomeReady = () => {
+          this.loadVideoById = vi.fn()
+          this.cueVideoById = vi.fn()
+          this.playVideo = vi.fn()
+          this.getPlayerState = vi.fn(() => window.YT.PlayerState.PAUSED)
+          config.events.onReady?.({ target: this })
+        }
+      })
+      const { rerender } = render(
+        <YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={0} />,
+      )
+      await waitFor(() => expect(PlayerMock).toHaveBeenCalledTimes(1))
+
+      rerender(<YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={1} />)
+
+      const instance = PlayerMock.mock.instances[0]
+      act(() => {
+        instance.becomeReady()
+      })
+
+      expect(instance.loadVideoById).toHaveBeenCalledWith({
+        videoId: 'abc123',
+        startSeconds: 5,
+        endSeconds: 50,
+      })
+    })
+
+    it('plays once the player is created and ready if the request arrived before the IFrame API loaded', async () => {
+      const YT = window.YT
+      delete window.YT
+      const { rerender } = render(
+        <YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={0} />,
+      )
+      rerender(<YouTubePlayer videoId="xyz789" start={0} end={30} onEnded={() => {}} autoplayToken={1} />)
+      expect(PlayerMock).not.toHaveBeenCalled()
+
+      window.YT = YT
+      window.onYouTubeIframeAPIReady()
+      await waitFor(() => expect(PlayerMock).toHaveBeenCalledTimes(1))
+
+      const [, config] = PlayerMock.mock.calls[0]
+      const instance = PlayerMock.mock.instances[0]
+      act(() => {
+        config.events.onReady({ target: instance })
+      })
+
+      expect(instance.loadVideoById).toHaveBeenCalledWith({
+        videoId: 'xyz789',
+        startSeconds: 0,
+        endSeconds: 30,
+      })
+    })
+
+    it('still falls back to the tap-to-start prompt if the deferred play does not start', async () => {
+      const { rerender } = render(
+        <YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={0} />,
+      )
+      await waitFor(() => expect(PlayerMock).toHaveBeenCalledTimes(1))
+      const instance = PlayerMock.mock.instances[0]
+      const loadVideoById = instance.loadVideoById
+      delete instance.loadVideoById
+
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      rerender(<YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={1} />)
+
+      instance.loadVideoById = loadVideoById
+      const [, config] = PlayerMock.mock.calls[0]
+      act(() => {
+        config.events.onReady({ target: instance })
+      })
+      act(() => {
+        vi.advanceTimersByTime(1500)
+      })
+
+      expect(loadVideoById).toHaveBeenCalledTimes(1)
+      expect(screen.getByText(/tap to start/i)).toBeInTheDocument()
+    })
+
+    it('does not load anything on ready when no forced play is pending', async () => {
+      render(<YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={0} />)
+      await waitFor(() => expect(PlayerMock).toHaveBeenCalledTimes(1))
+
+      const [, config] = PlayerMock.mock.calls[0]
+      const instance = PlayerMock.mock.instances[0]
+      act(() => {
+        config.events.onReady?.({ target: instance })
+      })
+
+      expect(instance.loadVideoById).not.toHaveBeenCalled()
+    })
+  })
+
   describe('tap-to-start fallback', () => {
     afterEach(() => {
       vi.useRealTimers()
