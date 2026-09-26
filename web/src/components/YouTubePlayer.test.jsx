@@ -12,6 +12,8 @@ describe('YouTubePlayer', () => {
       this.cueVideoById = vi.fn()
       this.loadVideoById = vi.fn()
       this.playVideo = vi.fn()
+      this.mute = vi.fn()
+      this.unMute = vi.fn()
       this.getPlayerState = vi.fn(() => window.YT.PlayerState.PAUSED)
       this.destroy = vi.fn()
     })
@@ -206,7 +208,7 @@ describe('YouTubePlayer', () => {
       })
     })
 
-    it('still falls back to the tap-to-start prompt if the deferred play does not start', async () => {
+    it('still falls back to muted playback if the deferred play does not start', async () => {
       const { rerender } = render(
         <YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={0} />,
       )
@@ -224,11 +226,12 @@ describe('YouTubePlayer', () => {
         config.events.onReady({ target: instance })
       })
       act(() => {
-        vi.advanceTimersByTime(1500)
+        vi.advanceTimersByTime(3000)
       })
 
       expect(loadVideoById).toHaveBeenCalledTimes(1)
-      expect(screen.getByText(/tap to start/i)).toBeInTheDocument()
+      expect(instance.mute).toHaveBeenCalled()
+      expect(screen.getByText(/click to unmute/i)).toBeInTheDocument()
     })
 
     it('does not load anything on ready when no forced play is pending', async () => {
@@ -245,7 +248,13 @@ describe('YouTubePlayer', () => {
     })
   })
 
-  describe('tap-to-start fallback', () => {
+  describe('tap-to-start fallback on iOS', () => {
+    beforeEach(() => {
+      vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+      )
+    })
+
     afterEach(() => {
       vi.useRealTimers()
     })
@@ -268,10 +277,28 @@ describe('YouTubePlayer', () => {
       expect(screen.queryByText(/tap to start/i)).not.toBeInTheDocument()
 
       act(() => {
-        vi.advanceTimersByTime(1500)
+        vi.advanceTimersByTime(3000)
       })
 
       expect(screen.getByText(/tap to start/i)).toBeInTheDocument()
+      expect(instance.mute).not.toHaveBeenCalled()
+    })
+
+    it('shows the tap-to-start prompt immediately when YouTube reports autoplay was blocked', async () => {
+      const { rerender } = render(
+        <YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={0} />,
+      )
+      await waitFor(() => expect(PlayerMock).toHaveBeenCalledTimes(1))
+      rerender(<YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={1} />)
+
+      const [, config] = PlayerMock.mock.calls[0]
+      const instance = PlayerMock.mock.instances[0]
+      act(() => {
+        config.events.onAutoplayBlocked()
+      })
+
+      expect(screen.getByText(/tap to start/i)).toBeInTheDocument()
+      expect(instance.mute).not.toHaveBeenCalled()
     })
 
     it('does not show the tap-to-start prompt if playback actually starts in time', async () => {
@@ -289,7 +316,7 @@ describe('YouTubePlayer', () => {
       })
 
       act(() => {
-        vi.advanceTimersByTime(1500)
+        vi.advanceTimersByTime(3000)
       })
 
       expect(screen.queryByText(/tap to start/i)).not.toBeInTheDocument()
@@ -304,7 +331,7 @@ describe('YouTubePlayer', () => {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
       rerender(<YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={1} />)
       act(() => {
-        vi.advanceTimersByTime(1500)
+        vi.advanceTimersByTime(3000)
       })
       const button = screen.getByText(/tap to start/i)
 
@@ -313,6 +340,168 @@ describe('YouTubePlayer', () => {
 
       expect(instance.playVideo).toHaveBeenCalledTimes(1)
       expect(screen.queryByText(/tap to start/i)).not.toBeInTheDocument()
+    })
+  })
+
+  describe('muted fallback on desktop', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    async function renderAndForcePlay() {
+      const { rerender } = render(
+        <YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={0} />,
+      )
+      await waitFor(() => expect(PlayerMock).toHaveBeenCalledTimes(1))
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      rerender(<YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={1} />)
+      const [, config] = PlayerMock.mock.calls[0]
+      return { config, instance: PlayerMock.mock.instances[0], rerender }
+    }
+
+    it('tries to play with sound first, even if the player was left muted', async () => {
+      const { instance } = await renderAndForcePlay()
+
+      expect(instance.unMute).toHaveBeenCalled()
+      expect(instance.unMute.mock.invocationCallOrder[0]).toBeLessThan(
+        instance.loadVideoById.mock.invocationCallOrder[0],
+      )
+      expect(instance.mute).not.toHaveBeenCalled()
+    })
+
+    it('plays muted and offers unmute when YouTube reports autoplay was blocked', async () => {
+      const { config, instance } = await renderAndForcePlay()
+
+      act(() => {
+        config.events.onAutoplayBlocked()
+      })
+
+      expect(instance.mute).toHaveBeenCalledTimes(1)
+      expect(instance.playVideo).toHaveBeenCalledTimes(1)
+      expect(instance.mute.mock.invocationCallOrder[0]).toBeLessThan(
+        instance.playVideo.mock.invocationCallOrder[0],
+      )
+      expect(screen.getByText(/click to unmute/i)).toBeInTheDocument()
+      expect(screen.queryByText(/tap to start/i)).not.toBeInTheDocument()
+    })
+
+    it('falls back to muted playback if nothing is playing after the check delay', async () => {
+      const { instance } = await renderAndForcePlay()
+
+      act(() => {
+        vi.advanceTimersByTime(2999)
+      })
+      expect(instance.mute).not.toHaveBeenCalled()
+
+      act(() => {
+        vi.advanceTimersByTime(1)
+      })
+      expect(instance.mute).toHaveBeenCalledTimes(1)
+      expect(instance.playVideo).toHaveBeenCalledTimes(1)
+      expect(screen.getByText(/click to unmute/i)).toBeInTheDocument()
+    })
+
+    it('does not mute if playback is buffering when the check delay passes', async () => {
+      const { instance } = await renderAndForcePlay()
+      instance.getPlayerState.mockReturnValue(window.YT.PlayerState.BUFFERING)
+
+      act(() => {
+        vi.advanceTimersByTime(3000)
+      })
+
+      expect(instance.mute).not.toHaveBeenCalled()
+      expect(screen.queryByText(/click to unmute/i)).not.toBeInTheDocument()
+    })
+
+    it('only falls back to muted playback once, even if both the event and the timer fire', async () => {
+      const { config, instance } = await renderAndForcePlay()
+
+      act(() => {
+        config.events.onAutoplayBlocked()
+      })
+      act(() => {
+        vi.advanceTimersByTime(3000)
+      })
+
+      expect(instance.mute).toHaveBeenCalledTimes(1)
+      expect(instance.playVideo).toHaveBeenCalledTimes(1)
+    })
+
+    it('asks for a click to start if even muted playback is blocked', async () => {
+      const { config, instance } = await renderAndForcePlay()
+
+      act(() => {
+        config.events.onAutoplayBlocked()
+      })
+      act(() => {
+        config.events.onAutoplayBlocked()
+      })
+
+      expect(instance.mute).toHaveBeenCalledTimes(1)
+      expect(screen.getByText(/tap to start/i)).toBeInTheDocument()
+      expect(screen.queryByText(/click to unmute/i)).not.toBeInTheDocument()
+    })
+
+    it('keeps the unmute prompt while the muted video plays', async () => {
+      const { config } = await renderAndForcePlay()
+
+      act(() => {
+        config.events.onAutoplayBlocked()
+      })
+      act(() => {
+        config.events.onStateChange({ data: window.YT.PlayerState.PLAYING })
+      })
+
+      expect(screen.getByText(/click to unmute/i)).toBeInTheDocument()
+    })
+
+    it('unmutes, keeps playing, and hides the prompt when clicked', async () => {
+      const { config, instance } = await renderAndForcePlay()
+      act(() => {
+        config.events.onAutoplayBlocked()
+      })
+      instance.unMute.mockClear()
+      instance.playVideo.mockClear()
+
+      fireEvent.click(screen.getByText(/click to unmute/i))
+
+      expect(instance.unMute).toHaveBeenCalledTimes(1)
+      expect(instance.playVideo).toHaveBeenCalledTimes(1)
+      expect(screen.queryByText(/click to unmute/i)).not.toBeInTheDocument()
+    })
+
+    it('clears a leftover unmute prompt and retries with sound on the next forced play', async () => {
+      const { config, instance, rerender } = await renderAndForcePlay()
+      act(() => {
+        config.events.onAutoplayBlocked()
+      })
+      instance.unMute.mockClear()
+
+      rerender(<YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={2} />)
+
+      expect(instance.unMute).toHaveBeenCalledTimes(1)
+      expect(screen.queryByText(/click to unmute/i)).not.toBeInTheDocument()
+
+      act(() => {
+        config.events.onAutoplayBlocked()
+      })
+      expect(instance.mute).toHaveBeenCalledTimes(2)
+      expect(screen.getByText(/click to unmute/i)).toBeInTheDocument()
+    })
+
+    it('ignores an autoplay-blocked report when nothing was asked to play', async () => {
+      render(<YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} autoplayToken={0} />)
+      await waitFor(() => expect(PlayerMock).toHaveBeenCalledTimes(1))
+      const [, config] = PlayerMock.mock.calls[0]
+      const instance = PlayerMock.mock.instances[0]
+
+      act(() => {
+        config.events.onAutoplayBlocked()
+      })
+
+      expect(instance.mute).not.toHaveBeenCalled()
+      expect(instance.playVideo).not.toHaveBeenCalled()
+      expect(screen.queryByRole('button')).not.toBeInTheDocument()
     })
   })
 })

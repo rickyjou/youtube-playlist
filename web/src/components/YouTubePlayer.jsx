@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { isIOS } from '../lib/platform.js'
 
-const AUTOPLAY_CHECK_DELAY_MS = 1500
+const AUTOPLAY_CHECK_DELAY_MS = 3000
 
 let iframeApiPromise = null
 
@@ -30,24 +31,47 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
   const lastAutoplayTokenRef = useRef(autoplayToken)
   const autoplayCheckTimeoutRef = useRef(null)
   const pendingForcedPlayRef = useRef(false)
-  const [showTapToStart, setShowTapToStart] = useState(false)
+  const mutedFallbackTriedRef = useRef(false)
+  // 'unmute' | 'tap' | null
+  const [prompt, setPrompt] = useState(null)
 
   function startForcedPlay(player) {
     const { videoId, start, end } = clipRef.current
     hasPlayedRef.current = true
     loadedAtRef.current = Date.now()
+    mutedFallbackTriedRef.current = false
+    setPrompt(null)
+    // Try with sound first: a mute left over from an earlier fallback would
+    // otherwise start the video silently with no unmute prompt.
+    player.unMute?.()
     player.loadVideoById({ videoId, startSeconds: start, endSeconds: end })
     // A forced autoplay (e.g. the shared-view countdown reaching zero) isn't
     // tied to a user gesture, so the browser may silently refuse to play it.
-    // Fall back to a manual prompt if it doesn't actually start.
+    // onAutoplayBlocked usually reports that; this timer is the backup.
     clearTimeout(autoplayCheckTimeoutRef.current)
     autoplayCheckTimeoutRef.current = setTimeout(() => {
       const state = playerRef.current?.getPlayerState?.()
       const YT = window.YT
       if (state !== YT?.PlayerState?.PLAYING && state !== YT?.PlayerState?.BUFFERING) {
-        setShowTapToStart(true)
+        handleAutoplayBlocked()
       }
     }, AUTOPLAY_CHECK_DELAY_MS)
+  }
+
+  function handleAutoplayBlocked() {
+    if (!hasPlayedRef.current) return
+    clearTimeout(autoplayCheckTimeoutRef.current)
+    const player = playerRef.current
+    // Browsers always allow muted autoplay, so on desktop start on time without
+    // sound rather than wait for a click. iOS keeps the manual tap to start.
+    if (isIOS() || mutedFallbackTriedRef.current || !player?.mute) {
+      setPrompt('tap')
+      return
+    }
+    mutedFallbackTriedRef.current = true
+    player.mute()
+    player.playVideo()
+    setPrompt('unmute')
   }
 
   useEffect(() => {
@@ -77,11 +101,12 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
               startForcedPlay(event.target)
             }
           },
+          onAutoplayBlocked: () => handleAutoplayBlocked(),
           onStateChange: (event) => {
             if (event.data === YT.PlayerState.PLAYING) {
               hasPlayedRef.current = true
               clearTimeout(autoplayCheckTimeoutRef.current)
-              setShowTapToStart(false)
+              setPrompt((current) => (current === 'unmute' ? current : null))
             }
             const spurious = Date.now() - loadedAtRef.current < 1500
             if (event.data === YT.PlayerState.ENDED && !hasEndedRef.current && !spurious) {
@@ -122,16 +147,30 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
 
   function handleTapToStart() {
     clearTimeout(autoplayCheckTimeoutRef.current)
-    setShowTapToStart(false)
+    setPrompt(null)
+    playerRef.current?.unMute?.()
+    playerRef.current?.playVideo?.()
+  }
+
+  function handleUnmute() {
+    // Only ever unmute from a click: Chrome pauses a muted autoplaying video
+    // that script unmutes without a user gesture.
+    setPrompt(null)
+    playerRef.current?.unMute?.()
     playerRef.current?.playVideo?.()
   }
 
   return (
     <div className="player-frame">
       <div ref={containerRef} />
-      {showTapToStart && (
+      {prompt === 'tap' && (
         <button type="button" className="tap-to-start-btn" onClick={handleTapToStart}>
           ▶ Tap to start
+        </button>
+      )}
+      {prompt === 'unmute' && (
+        <button type="button" className="tap-to-start-btn" onClick={handleUnmute}>
+          🔇 Click to unmute
         </button>
       )}
     </div>
