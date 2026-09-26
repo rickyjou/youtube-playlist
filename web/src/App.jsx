@@ -227,7 +227,7 @@ export default function App() {
   return (
     <div>
       <div className="top-bar">
-        <h1>YouTube Playlist Duration Calculator & Player</h1>
+        <h1>{isSharedView ? 'YouTube Playlist Player' : 'YouTube Playlist Duration Calculator & Player'}</h1>
         <button
           type="button"
           className="btn btn-secondary btn-icon"

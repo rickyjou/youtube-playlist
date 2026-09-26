@@ -34,6 +34,17 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: /youtube playlist/i })).toBeInTheDocument()
   })
 
+  it('titles the editor as the duration calculator and player', () => {
+    render(<App />)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('YouTube Playlist Duration Calculator & Player')
+  })
+
+  it('titles a shared playlist page simply as the player', () => {
+    window.history.pushState({}, '', `/?playlist=${btoa(JSON.stringify([{ videoId: 'sharedvid01', start: 0, end: 20 }]))}`)
+    render(<App />)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/^YouTube Playlist Player$/)
+  })
+
   it('opens the GitHub link without exposing window.opener', () => {
     render(<App />)
     expect(screen.getByText('Github Repository')).toHaveAttribute('rel', 'noopener noreferrer')
