@@ -32,6 +32,13 @@ describe('PlaylistView', () => {
     expect(screen.getByText('b')).toBeInTheDocument()
   })
 
+  it('exposes the full title as a tooltip so truncated titles stay readable', () => {
+    const longTitle = 'A very long video title that will be truncated with an ellipsis in the editor row'
+    renderView({ metadata: { a: { title: longTitle, thumbnail: '', durationSeconds: 60 } } })
+    expect(screen.getByText(longTitle)).toHaveAttribute('title', longTitle)
+    expect(screen.getByText('b')).toHaveAttribute('title', 'b')
+  })
+
   it('shows the total formatted duration across all clips', () => {
     renderView()
     expect(screen.getByText('Total time: 1:30')).toBeInTheDocument()
