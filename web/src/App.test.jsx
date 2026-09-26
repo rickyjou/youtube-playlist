@@ -54,6 +54,26 @@ describe('App', () => {
     expect(screen.queryByText(__APP_VERSION__)).not.toBeInTheDocument()
   })
 
+  it('keeps the remaining rows mounted when an earlier clip is deleted', () => {
+    render(<App />)
+    const secondRow = screen.getAllByRole('listitem')[1]
+
+    fireEvent.click(screen.getAllByText('Delete')[0])
+
+    expect(screen.getAllByRole('listitem')[0]).toBe(secondRow)
+  })
+
+  it('keeps both rows mounted when clips are reordered', () => {
+    render(<App />)
+    const [firstRow, secondRow] = screen.getAllByRole('listitem')
+
+    fireEvent.click(screen.getAllByText('↓')[0])
+
+    const [newFirst, newSecond] = screen.getAllByRole('listitem')
+    expect(newFirst).toBe(secondRow)
+    expect(newSecond).toBe(firstRow)
+  })
+
   it('starts with the default demo playlist when no share link is present', () => {
     render(<App />)
     expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
@@ -264,6 +284,16 @@ describe('App', () => {
     fireEvent.click(screen.getAllByText('↓')[0])
 
     expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+  })
+
+  it('keeps following the currently-playing clip when another clip is moved past it', () => {
+    render(<App />)
+    fireEvent.click(screen.getByText('simulate ended'))
+    expect(screen.getByTestId('player')).toHaveTextContent('gUSWWqnOKt0')
+
+    fireEvent.click(screen.getAllByText('↓')[0])
+
+    expect(screen.getByTestId('player')).toHaveTextContent('gUSWWqnOKt0')
   })
 
   it('replaces the whole playlist and resets to the first clip when a playlist link is submitted', async () => {

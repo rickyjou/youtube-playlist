@@ -6,6 +6,7 @@ import RawJsonPanel from './components/RawJsonPanel.jsx'
 import ShareLink from './components/ShareLink.jsx'
 import SharedClock from './components/SharedClock.jsx'
 import { decodePlaylistFromUrl } from './lib/shareUrl.js'
+import { withClipIds } from './lib/clipIds.js'
 import { calculateTotalSeconds } from './lib/time.js'
 import { fetchVideoMetadata } from './lib/youtubeApi.js'
 
@@ -32,7 +33,7 @@ function getEffectiveTheme(theme) {
 export default function App() {
   const [initialState] = useState(() => {
     const shared = decodePlaylistFromUrl(window.location.search)
-    return { playlist: shared ?? DEFAULT_PLAYLIST, isSharedView: shared != null }
+    return { playlist: withClipIds(shared ?? DEFAULT_PLAYLIST), isSharedView: shared != null }
   })
   const [playlist, setPlaylist] = useState(initialState.playlist)
   const [isSharedView] = useState(initialState.isSharedView)
@@ -116,12 +117,13 @@ export default function App() {
   }
 
   function handleAddClips(newClips, newMetadata) {
-    setPlaylist((current) => [...current, ...newClips])
+    const clipsWithIds = withClipIds(newClips)
+    setPlaylist((current) => [...current, ...clipsWithIds])
     setMetadata((current) => ({ ...current, ...newMetadata }))
   }
 
   function handleLoadPlaylist(newClips, newMetadata) {
-    setPlaylist(newClips)
+    setPlaylist(withClipIds(newClips))
     setMetadata((current) => ({ ...current, ...newMetadata }))
     setCurrentIndex(0)
   }
@@ -133,12 +135,8 @@ export default function App() {
   }
 
   function handleDeleteClip(index) {
-    let newLength = playlist.length
-    setPlaylist((current) => {
-      const next = current.filter((_, i) => i !== index)
-      newLength = next.length
-      return next
-    })
+    const newLength = playlist.length - 1
+    setPlaylist((current) => current.filter((_, i) => i !== index))
     setCurrentIndex((current) => {
       const next = index < current ? current - 1 : current
       return Math.min(next, Math.max(newLength - 1, 0))
@@ -147,19 +145,21 @@ export default function App() {
 
   function handleMoveClip(index, direction) {
     const target = index + direction
-    let didSwap = false
+    if (target < 0 || target >= playlist.length) return
     setPlaylist((current) => {
-      if (target < 0 || target >= current.length) return current
-      didSwap = true
       const next = [...current]
       ;[next[index], next[target]] = [next[target], next[index]]
       return next
     })
-    setCurrentIndex((current) => (didSwap && index === current ? target : current))
+    setCurrentIndex((current) => {
+      if (current === index) return target
+      if (current === target) return index
+      return current
+    })
   }
 
   function handleReplacePlaylist(newPlaylist) {
-    setPlaylist(newPlaylist)
+    setPlaylist(withClipIds(newPlaylist))
     setCurrentIndex(0)
     setAutoplayToken((token) => token + 1)
   }

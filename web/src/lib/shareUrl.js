@@ -1,4 +1,5 @@
 import { VIDEO_ID_PATTERN } from './youtubeInput.js'
+import { stripClipIds } from './clipIds.js'
 
 export function isValidPlaylist(value) {
   if (!Array.isArray(value)) return false
@@ -31,6 +32,6 @@ export function decodePlaylistFromUrl(search) {
 }
 
 export function buildShareUrl(playlist, baseUrl) {
-  const encoded = btoa(JSON.stringify(playlist))
+  const encoded = btoa(JSON.stringify(stripClipIds(playlist)))
   return `${baseUrl}?playlist=${encoded}`
 }

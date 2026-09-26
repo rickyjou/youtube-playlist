@@ -3,8 +3,8 @@ import { describe, it, expect, vi } from 'vitest'
 import PlaylistView from './PlaylistView.jsx'
 
 const playlist = [
-  { videoId: 'a', start: 0, end: 60 },
-  { videoId: 'b', start: 10, end: 40 },
+  { id: 'clip-a', videoId: 'a', start: 0, end: 60 },
+  { id: 'clip-b', videoId: 'b', start: 10, end: 40 },
 ]
 
 function renderView(overrides = {}) {

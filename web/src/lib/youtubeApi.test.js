@@ -38,6 +38,19 @@ describe('fetchVideoMetadata', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
+  it('requests all batches in parallel rather than one after another', async () => {
+    const pending = []
+    vi.stubGlobal('fetch', vi.fn(() => new Promise((resolve) => pending.push(resolve))))
+
+    const ids = Array.from({ length: 120 }, (_, i) => `id${i}`)
+    const result = fetchVideoMetadata(ids, 'test-key')
+    await Promise.resolve()
+
+    expect(fetch).toHaveBeenCalledTimes(3)
+    pending.forEach((resolve) => resolve({ ok: true, json: () => Promise.resolve({ items: [] }) }))
+    await expect(result).resolves.toEqual({})
+  })
+
   it('throws when the API responds with an error status', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 403 }))
     await expect(fetchVideoMetadata(['abc123'], 'bad-key')).rejects.toThrow('YouTube Data API error: 403')

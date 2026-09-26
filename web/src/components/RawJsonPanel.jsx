@@ -1,16 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { isValidPlaylist } from '../lib/shareUrl.js'
+import { stripClipIds } from '../lib/clipIds.js'
+
+function toJsonText(playlist) {
+  return JSON.stringify(stripClipIds(playlist))
+}
 
 export default function RawJsonPanel({ playlist, onReplacePlaylist, onReset }) {
-  const [text, setText] = useState(JSON.stringify(playlist))
+  const [text, setText] = useState(() => toJsonText(playlist))
   const [open, setOpen] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    if (!open) {
-      setText(JSON.stringify(playlist))
-    }
-  }, [playlist, open])
+  function handleToggleOpen() {
+    if (!open) setText(toJsonText(playlist))
+    setOpen(!open)
+  }
 
   function handleUpdate() {
     try {
@@ -36,7 +40,7 @@ export default function RawJsonPanel({ playlist, onReplacePlaylist, onReset }) {
 
   return (
     <section>
-      <button type="button" className="btn btn-secondary" onClick={() => setOpen((value) => !value)}>
+      <button type="button" className="btn btn-secondary" onClick={handleToggleOpen}>
         {open ? 'Hide advanced JSON editor' : 'Show advanced JSON editor'}
       </button>
       {open && (

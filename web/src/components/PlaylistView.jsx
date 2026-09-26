@@ -65,10 +65,10 @@ export default function PlaylistView({ playlist, currentIndex, metadata, onUpdat
           const meta = metadata[clip.videoId]
           const title = meta?.title ?? clip.videoId
           return (
-            <li key={`${clip.videoId}-${index}`} className={index === currentIndex ? 'playing' : ''}>
+            <li key={clip.id} className={index === currentIndex ? 'playing' : ''}>
               <div className="clip-row">
                 <span className="clip-index">{index + 1}.</span>
-                {meta?.thumbnail && <img src={meta.thumbnail} alt="" width="60" />}
+                {meta?.thumbnail && <img src={meta.thumbnail} alt="" width="60" height="45" loading="lazy" />}
                 <span className="clip-title" title={title}>
                   {title}
                 </span>

@@ -59,4 +59,10 @@ describe('buildShareUrl', () => {
     const url = buildShareUrl(playlist, 'https://example.com/app')
     expect(url).toBe(`https://example.com/app?playlist=${btoa(JSON.stringify(playlist))}`)
   })
+
+  it('leaves internal clip ids out of the share link', () => {
+    const playlist = [{ id: 'clip-1', videoId: 'abc123', start: 0, end: 10 }]
+    const url = buildShareUrl(playlist, 'https://example.com/app')
+    expect(url).toBe(`https://example.com/app?playlist=${btoa(JSON.stringify([{ videoId: 'abc123', start: 0, end: 10 }]))}`)
+  })
 })

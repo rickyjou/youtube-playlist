@@ -89,6 +89,14 @@ describe('RawJsonPanel', () => {
     expect(screen.getByRole('textbox').value).toBe(JSON.stringify(updatedPlaylist))
   })
 
+  it('shows the playlist JSON without internal clip ids', () => {
+    const playlist = [{ id: 'clip-1', videoId: 'a', start: 0, end: 10 }]
+    render(<RawJsonPanel playlist={playlist} onReplacePlaylist={vi.fn()} onReset={vi.fn()} />)
+
+    fireEvent.click(screen.getByText('Show advanced JSON editor'))
+    expect(screen.getByRole('textbox').value).toBe('[{"videoId":"a","start":0,"end":10}]')
+  })
+
   it('clears JSON error when resetting after a parse error', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     const onReset = vi.fn()
