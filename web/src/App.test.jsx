@@ -5,8 +5,8 @@ import App from './App.jsx'
 import * as youtubeApi from './lib/youtubeApi.js'
 
 vi.mock('./components/YouTubePlayer.jsx', () => ({
-  default: ({ videoId, onEnded, autoplayToken }) => (
-    <div data-testid="player" data-autoplay-token={autoplayToken}>
+  default: ({ videoId, start, onEnded, autoplayToken }) => (
+    <div data-testid="player" data-autoplay-token={autoplayToken} data-start={start}>
       {videoId}
       <button onClick={onEnded}>simulate ended</button>
     </div>
@@ -17,6 +17,10 @@ vi.mock('./lib/youtubeApi.js')
 
 describe('App', () => {
   beforeEach(() => {
+    // Top of the hour: no shared playlist shorter than an hour is running, so
+    // shared-view tests don't jump into a playlist depending on the real time.
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(2026, 0, 1, 3, 0, 0))
     window.history.pushState({}, '', '/')
     youtubeApi.fetchVideoMetadata.mockReset().mockResolvedValue({})
   })
@@ -242,6 +246,60 @@ describe('App', () => {
     })
 
     expect(screen.getByTestId('player').dataset.autoplayToken).not.toBe(initialToken)
+  })
+
+  it('joins partway through when the shared link is opened while the playlist is running', () => {
+    vi.useFakeTimers()
+    // Two clips totalling 15 min run from 3:45 to 4:00; at 3:52:30 we are
+    // 7:30 in, i.e. 1:30 into the second clip (which starts at 0:10).
+    vi.setSystemTime(new Date(2026, 0, 1, 3, 52, 30))
+    const shared = [
+      { videoId: 'sharedvid01', start: 0, end: 360 },
+      { videoId: 'sharedvid02', start: 10, end: 550 },
+    ]
+    window.history.pushState({}, '', `/?playlist=${btoa(JSON.stringify(shared))}`)
+
+    render(<App />)
+
+    const player = screen.getByTestId('player')
+    expect(player).toHaveTextContent('sharedvid02')
+    expect(player.dataset.start).toBe('100')
+    expect(player.dataset.autoplayToken).toBe('1')
+  })
+
+  it('plays later clips from their own start after joining partway through', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 0, 1, 3, 46, 0))
+    const shared = [
+      { videoId: 'sharedvid01', start: 0, end: 300 },
+      { videoId: 'sharedvid02', start: 10, end: 610 },
+    ]
+    window.history.pushState({}, '', `/?playlist=${btoa(JSON.stringify(shared))}`)
+
+    render(<App />)
+    expect(screen.getByTestId('player').dataset.start).toBe('60')
+
+    fireEvent.click(screen.getByText('simulate ended'))
+
+    expect(screen.getByTestId('player')).toHaveTextContent('sharedvid02')
+    expect(screen.getByTestId('player').dataset.start).toBe('10')
+  })
+
+  it('plays a clip from its own start after using next/previous following a join', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 0, 1, 3, 46, 0))
+    const shared = [
+      { videoId: 'sharedvid01', start: 0, end: 300 },
+      { videoId: 'sharedvid02', start: 10, end: 610 },
+    ]
+    window.history.pushState({}, '', `/?playlist=${btoa(JSON.stringify(shared))}`)
+
+    render(<App />)
+    fireEvent.click(screen.getByLabelText('Next clip'))
+    fireEvent.click(screen.getByLabelText('Previous clip'))
+
+    expect(screen.getByTestId('player')).toHaveTextContent('sharedvid01')
+    expect(screen.getByTestId('player').dataset.start).toBe('0')
   })
 
   it('advances to the next clip when the player reports the current clip ended', () => {

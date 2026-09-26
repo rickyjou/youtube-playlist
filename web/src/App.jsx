@@ -7,7 +7,7 @@ import ShareLink from './components/ShareLink.jsx'
 import SharedClock from './components/SharedClock.jsx'
 import { decodePlaylistFromUrl } from './lib/shareUrl.js'
 import { withClipIds } from './lib/clipIds.js'
-import { calculateTotalSeconds } from './lib/time.js'
+import { calculateTotalSeconds, locatePlaylistPosition } from './lib/time.js'
 import { fetchVideoMetadata } from './lib/youtubeApi.js'
 
 const DEFAULT_PLAYLIST = [
@@ -41,6 +41,9 @@ export default function App() {
   const [metadata, setMetadata] = useState({})
   const [theme, setTheme] = useState(getStoredTheme)
   const [autoplayToken, setAutoplayToken] = useState(0)
+  // Where to start a clip when joining a shared playlist partway through:
+  // { index, start }. Cleared as soon as playback moves to another clip.
+  const [joinPosition, setJoinPosition] = useState(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showFullscreenControls, setShowFullscreenControls] = useState(true)
   const playerWrapperRef = useRef(null)
@@ -170,15 +173,28 @@ export default function App() {
   }
 
   function handleEnded() {
+    setJoinPosition(null)
     setCurrentIndex((current) => current + 1)
   }
 
   function handleNext() {
+    setJoinPosition(null)
     setCurrentIndex((current) => (current + 1) % playlist.length)
   }
 
   function handlePrevious() {
+    setJoinPosition(null)
     setCurrentIndex((current) => (current - 1 + playlist.length) % playlist.length)
+  }
+
+  function handleReachZero(secondsLate) {
+    // The countdown can fire late (throttled timer, page opened mid-playlist),
+    // so start wherever the playlist should be by now to stay in sync.
+    const position = locatePlaylistPosition(playlist, secondsLate)
+    if (!position) return
+    setJoinPosition(position)
+    setCurrentIndex(position.index)
+    setAutoplayToken((token) => token + 1)
   }
 
   function handleToggleFullscreen() {
@@ -195,7 +211,7 @@ export default function App() {
   const player = currentClip && (
     <YouTubePlayer
       videoId={currentClip.videoId}
-      start={currentClip.start}
+      start={joinPosition?.index === currentIndex ? joinPosition.start : currentClip.start}
       end={currentClip.end}
       onEnded={handleEnded}
       disableNativeFullscreen={isSharedView}
@@ -253,7 +269,7 @@ export default function App() {
           )}
           <SharedClock
             totalSeconds={totalSeconds}
-            onReachZero={() => setAutoplayToken((token) => token + 1)}
+            onReachZero={handleReachZero}
           />
         </>
       ) : (

@@ -190,4 +190,21 @@ describe('SharedClock', () => {
 
     expect(onReachZero).toHaveBeenCalledTimes(1)
   })
+
+  it('fires right away, with the time already elapsed, when opened while the playlist is running', () => {
+    vi.setSystemTime(new Date(2026, 0, 1, 3, 52, 30))
+    const onReachZero = vi.fn()
+    render(<SharedClock totalSeconds={15 * 60} onReachZero={onReachZero} />)
+
+    expect(onReachZero).toHaveBeenCalledTimes(1)
+    expect(onReachZero).toHaveBeenCalledWith(7 * 60 + 30)
+  })
+
+  it('waits for the next start when opened right after the playlist ended', () => {
+    vi.setSystemTime(new Date(2026, 0, 1, 4, 0, 0))
+    const onReachZero = vi.fn()
+    render(<SharedClock totalSeconds={15 * 60} onReachZero={onReachZero} />)
+
+    expect(onReachZero).not.toHaveBeenCalled()
+  })
 })
