@@ -1,6 +1,11 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import ShareLink from './ShareLink.jsx'
+import { shortenUrl } from '../lib/urlShortener.js'
+
+vi.mock('../lib/urlShortener.js', () => ({ shortenUrl: vi.fn() }))
+
+const SHORT_URL = 'http://go.apexarkai.com/AbCd1234'
 
 const playlist = [{ videoId: 'abc123', start: 0, end: 10 }]
 const otherPlaylist = [{ videoId: 'xyz789', start: 0, end: 20 }]
@@ -17,17 +22,8 @@ describe('ShareLink', () => {
       value: { writeText: vi.fn().mockResolvedValue(undefined) },
       configurable: true,
     })
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        text: () => Promise.resolve('https://da.gd/abc123'),
-      }),
-    )
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
+    shortenUrl.mockReset()
+    shortenUrl.mockResolvedValue(SHORT_URL)
   })
 
   it('does not show the link input until generated', () => {
@@ -39,11 +35,11 @@ describe('ShareLink', () => {
     render(<ShareLink playlist={playlist} />)
     await generate()
 
-    expect(screen.getByRole('textbox').value).toBe('https://da.gd/abc123')
+    expect(screen.getByRole('textbox').value).toBe(SHORT_URL)
   })
 
   it('falls back to the long link and shows a note when shortening fails', async () => {
-    fetch.mockResolvedValue({ ok: false, text: () => Promise.resolve('') })
+    shortenUrl.mockResolvedValue(null)
     render(<ShareLink playlist={playlist} />)
     await generate()
 
@@ -59,7 +55,7 @@ describe('ShareLink', () => {
       fireEvent.click(screen.getByText('Copy Link'))
     })
 
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://da.gd/abc123')
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(SHORT_URL)
   })
 
   it('opens the generated link in a reusable named tab without leaking window.opener', async () => {
@@ -98,10 +94,10 @@ describe('ShareLink', () => {
   })
 
   it('disables the generate button while shortening is in flight', async () => {
-    let resolveFetch
-    fetch.mockReturnValue(
+    let resolveShorten
+    shortenUrl.mockReturnValue(
       new Promise((resolve) => {
-        resolveFetch = resolve
+        resolveShorten = resolve
       }),
     )
     render(<ShareLink playlist={playlist} />)
@@ -109,7 +105,7 @@ describe('ShareLink', () => {
 
     expect(screen.getByText('Generating...')).toBeDisabled()
 
-    resolveFetch({ ok: true, text: () => Promise.resolve('https://da.gd/abc123') })
+    resolveShorten(SHORT_URL)
     await waitFor(() => expect(screen.getByRole('textbox')).toBeInTheDocument())
   })
 })
