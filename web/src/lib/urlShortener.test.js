@@ -1,132 +1,79 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { shortenUrl } from './urlShortener.js'
 
-const sdk = vi.hoisted(() => ({
-  initialize: vi.fn(),
-  signUpAnonymous: vi.fn(),
-  insert: vi.fn(),
-  database: vi.fn(),
-  constructed: vi.fn(),
-}))
-
-vi.mock('@volcano.dev/sdk', () => ({
-  VolcanoAuth: class {
-    constructor(config) {
-      sdk.constructed(config)
-      this.auth = { signUpAnonymous: sdk.signUpAnonymous }
-      this.initialize = sdk.initialize
-      this.insert = sdk.insert
-      this.database = sdk.database
-    }
-  },
-}))
-
+const API = 'https://222b03b1-9b0e-45e8-8d20-a97e8a494853.frontends.volcano.run/api/links'
 const LONG_URL = 'https://rickyjou.github.io/youtube-playlist/?playlist=abc'
-const SHORT_URL_PATTERN = /^http:\/\/go\.apexarkai\.com\/[A-Za-z0-9]{8}$/
+const SHORT_URL = 'http://go.apexarkai.com/AbCd1234'
 
-// Fresh module per test: shortenUrl caches its Volcano client at module level.
-async function loadShortenUrl() {
-  vi.resetModules()
-  return (await import('./urlShortener.js')).shortenUrl
+function respond(status, body) {
+  return { ok: status >= 200 && status < 300, status, json: () => Promise.resolve(body) }
 }
 
 describe('shortenUrl', () => {
   beforeEach(() => {
-    Object.values(sdk).forEach((fn) => fn.mockReset())
-    sdk.initialize.mockResolvedValue({ user: null })
-    sdk.signUpAnonymous.mockResolvedValue({ user: { id: 'guest' }, error: null })
-    sdk.insert.mockResolvedValue({ data: [{}], error: null })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(respond(201, { code: 'AbCd1234', shortUrl: SHORT_URL, url: LONG_URL })))
   })
 
-  it('stores the link and returns a go.apexarkai.com short URL with an 8-character alphanumeric code', async () => {
-    const shortenUrl = await loadShortenUrl()
-
-    const result = await shortenUrl(LONG_URL)
-
-    expect(result).toMatch(SHORT_URL_PATTERN)
-    const code = result.split('/').pop()
-    expect(sdk.insert).toHaveBeenCalledWith('links', { code, url: LONG_URL })
-    expect(sdk.database).toHaveBeenCalledWith('app')
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
-  it('signs in as an anonymous guest when there is no saved session', async () => {
-    const shortenUrl = await loadShortenUrl()
-
-    await shortenUrl(LONG_URL)
-
-    expect(sdk.signUpAnonymous).toHaveBeenCalledTimes(1)
+  it('POSTs the long URL as JSON to the tinyurl API and returns the short URL', async () => {
+    expect(await shortenUrl(LONG_URL)).toBe(SHORT_URL)
+    expect(fetch).toHaveBeenCalledWith(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: LONG_URL }),
+    })
   })
 
-  it('reuses a saved session instead of creating another guest', async () => {
-    sdk.initialize.mockResolvedValue({ user: { id: 'existing' } })
-    const shortenUrl = await loadShortenUrl()
-
-    await shortenUrl(LONG_URL)
-
-    expect(sdk.signUpAnonymous).not.toHaveBeenCalled()
-    expect(sdk.insert).toHaveBeenCalledTimes(1)
-  })
-
-  it('reuses one client across multiple calls', async () => {
-    const shortenUrl = await loadShortenUrl()
-
-    await shortenUrl(LONG_URL)
-    await shortenUrl(LONG_URL)
-
-    expect(sdk.constructed).toHaveBeenCalledTimes(1)
-    expect(sdk.signUpAnonymous).toHaveBeenCalledTimes(1)
-  })
-
-  it('retries with a new code when the generated code is already taken', async () => {
-    sdk.insert
-      .mockResolvedValueOnce({ data: null, error: new Error('duplicate key value violates unique constraint "links_pkey"') })
-      .mockResolvedValueOnce({ data: [{}], error: null })
-    const shortenUrl = await loadShortenUrl()
-
-    const result = await shortenUrl(LONG_URL)
-
-    expect(result).toMatch(SHORT_URL_PATTERN)
-    expect(sdk.insert).toHaveBeenCalledTimes(2)
-    const [first, second] = sdk.insert.mock.calls.map(([, row]) => row.code)
-    expect(first).not.toBe(second)
-  })
-
-  it('returns null when every generated code collides', async () => {
-    sdk.insert.mockResolvedValue({ data: null, error: new Error('duplicate key value violates unique constraint') })
+  it('returns null when the API rejects the request', async () => {
+    fetch.mockResolvedValue(respond(403, { error: 'Origin not allowed' }))
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const shortenUrl = await loadShortenUrl()
 
     expect(await shortenUrl(LONG_URL)).toBeNull()
 
     spy.mockRestore()
   })
 
-  it('returns null when the insert fails for another reason', async () => {
-    sdk.insert.mockResolvedValue({ data: null, error: new Error('permission denied') })
+  it('returns null when the API is unavailable', async () => {
+    fetch.mockResolvedValue(respond(503, { error: 'try again' }))
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const shortenUrl = await loadShortenUrl()
 
     expect(await shortenUrl(LONG_URL)).toBeNull()
-    expect(sdk.insert).toHaveBeenCalledTimes(1)
 
     spy.mockRestore()
   })
 
-  it('returns null when guest sign-in fails, and tries a fresh client next time', async () => {
-    sdk.signUpAnonymous.mockResolvedValueOnce({ user: null, error: new Error('rate limited') })
+  it('returns null when the response has no usable short URL', async () => {
+    fetch.mockResolvedValue(respond(201, { shortUrl: 'not a url' }))
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const shortenUrl = await loadShortenUrl()
 
     expect(await shortenUrl(LONG_URL)).toBeNull()
-    expect(await shortenUrl(LONG_URL)).toMatch(SHORT_URL_PATTERN)
-    expect(sdk.constructed).toHaveBeenCalledTimes(2)
 
     spy.mockRestore()
   })
 
-  it('returns null without contacting the service when the URL exceeds the 8192-character limit', async () => {
-    const shortenUrl = await loadShortenUrl()
+  it('returns null when the response body is not JSON', async () => {
+    fetch.mockResolvedValue({ ok: true, status: 201, json: () => Promise.reject(new SyntaxError('bad json')) })
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
+    expect(await shortenUrl(LONG_URL)).toBeNull()
+
+    spy.mockRestore()
+  })
+
+  it('returns null when the network request throws', async () => {
+    fetch.mockRejectedValue(new Error('network down'))
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    expect(await shortenUrl(LONG_URL)).toBeNull()
+
+    spy.mockRestore()
+  })
+
+  it('returns null without calling the API when the URL exceeds the 8192-character limit', async () => {
     expect(await shortenUrl(`${LONG_URL}${'A'.repeat(8192)}`)).toBeNull()
-    expect(sdk.constructed).not.toHaveBeenCalled()
+    expect(fetch).not.toHaveBeenCalled()
   })
 })
