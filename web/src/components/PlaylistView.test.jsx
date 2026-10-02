@@ -19,6 +19,7 @@ function renderView(overrides = {}) {
       playlist={playlist}
       currentIndex={0}
       metadata={{}}
+      totalSeconds={90}
       {...handlers}
     />
   )
@@ -39,9 +40,32 @@ describe('PlaylistView', () => {
     expect(screen.getByText('b')).toHaveAttribute('title', 'b')
   })
 
-  it('shows the total formatted duration across all clips', () => {
-    renderView()
-    expect(screen.getByText('Total time: 1:30')).toBeInTheDocument()
+  it('shows the total duration it is given', () => {
+    renderView({ totalSeconds: 125 })
+    expect(screen.getByText('Total time: 2:05')).toBeInTheDocument()
+  })
+
+  it('does not re-render rows whose clip and props are unchanged when another row is edited', () => {
+    // Counts how often row b renders: its title getter is read on every render.
+    let rowBRenders = 0
+    const metaB = {
+      get title() {
+        rowBRenders += 1
+        return 'B'
+      },
+    }
+    const metadata = { b: metaB }
+    const handlers = { onUpdateClip: vi.fn(), onDeleteClip: vi.fn(), onMoveClip: vi.fn() }
+    const view = (clips) => (
+      <PlaylistView playlist={clips} currentIndex={0} metadata={metadata} totalSeconds={0} {...handlers} />
+    )
+    const { rerender } = render(view(playlist))
+    const rendersAfterMount = rowBRenders
+
+    rerender(view([{ ...playlist[0], end: 61 }, playlist[1]]))
+
+    expect(screen.getAllByLabelText('End seconds')[0]).toHaveValue(1)
+    expect(rowBRenders).toBe(rendersAfterMount)
   })
 
   it('calls onUpdateClip with the new end time when the end seconds input changes', () => {

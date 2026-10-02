@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { buildShareUrl } from '../lib/shareUrl.js'
+import { buildShareUrl, isValidPlaylist, MAX_CLIPS } from '../lib/shareUrl.js'
 import { shortenUrl } from '../lib/urlShortener.js'
 
 export default function ShareLink({ playlist }) {
@@ -11,9 +11,18 @@ export default function ShareLink({ playlist }) {
   useEffect(() => {
     setLink('')
     setShortenFailed(false)
+    setError('')
   }, [playlist])
 
   async function handleGenerate() {
+    // The shared view rejects these, so the link would silently open the default playlist.
+    if (!isValidPlaylist(playlist)) {
+      setError(
+        `This playlist can't be shared: links allow up to ${MAX_CLIPS} clips, each ending within 24 hours and starting before it ends.`,
+      )
+      return
+    }
+    setError('')
     const baseUrl = window.location.origin + window.location.pathname
     const longUrl = buildShareUrl(playlist, baseUrl)
     setGenerating(true)

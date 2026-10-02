@@ -444,6 +444,42 @@ describe('App', () => {
     expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
   })
 
+  it('bounds-checks a move against the playlist as already changed in the same batch', () => {
+    render(<App />)
+    const deleteSecond = screen.getAllByText('Delete')[1]
+    const moveFirstDown = screen.getAllByText('↓')[0]
+
+    // Both handlers run before React re-renders, so the move must see the
+    // one-clip playlist the delete left behind, not the two-clip render.
+    act(() => {
+      fireEvent.click(deleteSecond)
+      fireEvent.click(moveFirstDown)
+    })
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(1)
+    expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+  })
+
+  it('passes stable clip handlers so editing one row does not re-render the others', async () => {
+    // Counts how often the second row renders: its title getter is read on every render.
+    let secondRowRenders = 0
+    const secondMeta = {
+      get title() {
+        secondRowRenders += 1
+        return 'Second video'
+      },
+    }
+    youtubeApi.fetchVideoMetadata.mockResolvedValue({ gUSWWqnOKt0: secondMeta })
+    render(<App />)
+    await screen.findByText('Second video')
+    const rendersBeforeEdit = secondRowRenders
+
+    fireEvent.change(screen.getAllByLabelText('End seconds')[0], { target: { value: '5' } })
+
+    expect(screen.getAllByLabelText('End seconds')[0]).toHaveValue(5)
+    expect(secondRowRenders).toBe(rendersBeforeEdit)
+  })
+
   it('keeps following the currently-playing clip when it is moved down', () => {
     render(<App />)
     expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')

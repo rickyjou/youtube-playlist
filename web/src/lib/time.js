@@ -1,4 +1,4 @@
-function pad(value) {
+export function pad(value) {
   return String(value).padStart(2, '0')
 }
 
@@ -9,7 +9,7 @@ export function formatTime(totalSeconds) {
 }
 
 export function calculateTotalSeconds(playlist) {
-  return playlist.reduce((total, clip) => total + (clip.end - clip.start), 0)
+  return playlist.reduce((total, clip) => total + Math.max(clip.end - clip.start, 0), 0)
 }
 
 export function formatClockTime(date) {

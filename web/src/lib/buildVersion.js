@@ -1,6 +1,4 @@
-function pad(value) {
-  return String(value).padStart(2, '0')
-}
+import { pad } from './time.js'
 
 export function formatBuildVersion(date, buildNumber) {
   const stamp = `${date.getUTCFullYear()}.${pad(date.getUTCMonth() + 1)}.${pad(date.getUTCDate())}-${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}`

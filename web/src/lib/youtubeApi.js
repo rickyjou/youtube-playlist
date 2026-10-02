@@ -1,10 +1,17 @@
 const API_BASE = 'https://www.googleapis.com/youtube/v3'
+const ISO_DURATION_PATTERN = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/
 
 function parseIsoDuration(iso) {
-  const match = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(iso)
+  const match = ISO_DURATION_PATTERN.exec(iso)
   if (!match) return 0
   const [, hours, minutes, seconds] = match
   return (Number(hours) || 0) * 3600 + (Number(minutes) || 0) * 60 + (Number(seconds) || 0)
+}
+
+function assertOk(response) {
+  if (!response.ok) {
+    throw new Error(`YouTube Data API error: ${response.status}`)
+  }
 }
 
 function chunk(array, size) {
@@ -20,9 +27,7 @@ export async function fetchVideoMetadata(videoIds, apiKey) {
     chunk(videoIds, 50).map(async (batch) => {
       const url = `${API_BASE}/videos?part=snippet,contentDetails&id=${batch.join(',')}&key=${apiKey}`
       const response = await fetch(url)
-      if (!response.ok) {
-        throw new Error(`YouTube Data API error: ${response.status}`)
-      }
+      assertOk(response)
       const data = await response.json()
       return data.items ?? []
     }),
@@ -44,9 +49,7 @@ export async function fetchPlaylistVideoIds(playlistId, apiKey) {
   do {
     const url = `${API_BASE}/playlistItems?part=contentDetails&maxResults=50&playlistId=${playlistId}&key=${apiKey}${pageToken ? `&pageToken=${pageToken}` : ''}`
     const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error(`YouTube Data API error: ${response.status}`)
-    }
+    assertOk(response)
     const data = await response.json()
     for (const item of data.items ?? []) {
       videoIds.push(item.contentDetails.videoId)

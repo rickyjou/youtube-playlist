@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { isIOS } from '../lib/platform.js'
 
 const AUTOPLAY_CHECK_DELAY_MS = 3000
+// The IFrame API can report ENDED right after loadVideoById, before the new
+// clip ever plays; ENDED this soon after a load is ignored.
+const SPURIOUS_ENDED_MS = 1500
 
 let iframeApiPromise = null
 
@@ -108,7 +111,7 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
               clearTimeout(autoplayCheckTimeoutRef.current)
               setPrompt((current) => (current === 'unmute' ? current : null))
             }
-            const spurious = Date.now() - loadedAtRef.current < 1500
+            const spurious = Date.now() - loadedAtRef.current < SPURIOUS_ENDED_MS
             if (event.data === YT.PlayerState.ENDED && !hasEndedRef.current && !spurious) {
               hasEndedRef.current = true
               onEnded()
@@ -123,7 +126,6 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
       clearTimeout(autoplayCheckTimeoutRef.current)
       playerRef.current?.destroy()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {

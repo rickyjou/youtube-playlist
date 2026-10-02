@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { decodePlaylistFromUrl, buildShareUrl, isValidPlaylist } from './shareUrl.js'
+import { decodePlaylistFromUrl, buildShareUrl, isValidPlaylist, MAX_CLIPS, MAX_CLIP_SECONDS } from './shareUrl.js'
 
 describe('decodePlaylistFromUrl', () => {
   it('returns null when there is no playlist param', () => {
@@ -50,6 +50,20 @@ describe('isValidPlaylist', () => {
 
   it('rejects an end before start', () => {
     expect(isValidPlaylist([{ videoId: 'abc12345678', start: 10, end: 5 }])).toBe(false)
+  })
+
+  it('accepts exactly MAX_CLIPS clips and rejects one more', () => {
+    const clip = { videoId: 'abc12345678', start: 0, end: 10 }
+    expect(MAX_CLIPS).toBe(500)
+    expect(isValidPlaylist(Array(MAX_CLIPS).fill(clip))).toBe(true)
+    expect(isValidPlaylist(Array(MAX_CLIPS + 1).fill(clip))).toBe(false)
+  })
+
+  it('accepts an end of exactly MAX_CLIP_SECONDS and rejects anything beyond', () => {
+    expect(MAX_CLIP_SECONDS).toBe(86400)
+    expect(isValidPlaylist([{ videoId: 'abc12345678', start: 0, end: MAX_CLIP_SECONDS }])).toBe(true)
+    expect(isValidPlaylist([{ videoId: 'abc12345678', start: 0, end: MAX_CLIP_SECONDS + 1 }])).toBe(false)
+    expect(isValidPlaylist([{ videoId: 'abc12345678', start: 1e15, end: 1e15 }])).toBe(false)
   })
 })
 

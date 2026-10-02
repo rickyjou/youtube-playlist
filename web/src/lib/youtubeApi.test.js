@@ -80,4 +80,9 @@ describe('fetchPlaylistVideoIds', () => {
     expect(result).toEqual(['a', 'b', 'c'])
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
+
+  it('throws when the API responds with an error status', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }))
+    await expect(fetchPlaylistVideoIds('PLxxxx', 'test-key')).rejects.toThrow('YouTube Data API error: 404')
+  })
 })

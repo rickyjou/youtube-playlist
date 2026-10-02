@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import YouTubePlayer from './components/YouTubePlayer.jsx'
 import PlaylistView from './components/PlaylistView.jsx'
 import AddClipInput from './components/AddClipInput.jsx'
@@ -37,6 +37,10 @@ export default function App() {
     return { playlist: withClipIds(shared ?? DEFAULT_PLAYLIST), isSharedView: shared != null }
   })
   const [playlist, setPlaylist] = useState(initialState.playlist)
+  // Always the newest playlist, even ahead of a pending re-render, so handlers
+  // that also adjust currentIndex can read its length without a stale closure.
+  // Every playlist write must go through updatePlaylist to keep this in sync.
+  const latestPlaylistRef = useRef(initialState.playlist)
   const [isSharedView] = useState(initialState.isSharedView)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [metadata, setMetadata] = useState({})
@@ -70,7 +74,6 @@ export default function App() {
     }
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -120,37 +123,45 @@ export default function App() {
     setTheme(current === 'dark' ? 'light' : 'dark')
   }
 
+  // Computes the next playlist in the handler rather than in a setState
+  // updater, so the ref can advance immediately without an impure updater.
+  const updatePlaylist = useCallback((computeNext) => {
+    const next = computeNext(latestPlaylistRef.current)
+    latestPlaylistRef.current = next
+    setPlaylist(next)
+    return next
+  }, [])
+
   function handleAddClips(newClips, newMetadata) {
     const clipsWithIds = withClipIds(newClips)
-    setPlaylist((current) => [...current, ...clipsWithIds])
+    updatePlaylist((current) => [...current, ...clipsWithIds])
     setMetadata((current) => ({ ...current, ...newMetadata }))
   }
 
   function handleLoadPlaylist(newClips, newMetadata) {
-    setPlaylist(withClipIds(newClips))
+    updatePlaylist(() => withClipIds(newClips))
     setMetadata((current) => ({ ...current, ...newMetadata }))
     setCurrentIndex(0)
   }
 
-  function handleUpdateClip(index, changes) {
-    setPlaylist((current) =>
+  const handleUpdateClip = useCallback((index, changes) => {
+    updatePlaylist((current) =>
       current.map((clip, i) => (i === index ? { ...clip, ...changes } : clip)),
     )
-  }
+  }, [updatePlaylist])
 
-  function handleDeleteClip(index) {
-    const newLength = playlist.length - 1
-    setPlaylist((current) => current.filter((_, i) => i !== index))
+  const handleDeleteClip = useCallback((index) => {
+    const next = updatePlaylist((current) => current.filter((_, i) => i !== index))
     setCurrentIndex((current) => {
-      const next = index < current ? current - 1 : current
-      return Math.min(next, Math.max(newLength - 1, 0))
+      const shifted = index < current ? current - 1 : current
+      return Math.min(shifted, Math.max(next.length - 1, 0))
     })
-  }
+  }, [updatePlaylist])
 
-  function handleMoveClip(index, direction) {
+  const handleMoveClip = useCallback((index, direction) => {
     const target = index + direction
-    if (target < 0 || target >= playlist.length) return
-    setPlaylist((current) => {
+    if (target < 0 || target >= latestPlaylistRef.current.length) return
+    updatePlaylist((current) => {
       const next = [...current]
       ;[next[index], next[target]] = [next[target], next[index]]
       return next
@@ -160,16 +171,16 @@ export default function App() {
       if (current === target) return index
       return current
     })
-  }
+  }, [updatePlaylist])
 
   function handleReplacePlaylist(newPlaylist) {
-    setPlaylist(withClipIds(newPlaylist))
+    updatePlaylist(() => withClipIds(newPlaylist))
     setCurrentIndex(0)
     setAutoplayToken((token) => token + 1)
   }
 
   function handleReset() {
-    setPlaylist([])
+    updatePlaylist(() => [])
     setCurrentIndex(0)
   }
 
@@ -293,6 +304,7 @@ export default function App() {
               playlist={playlist}
               currentIndex={currentIndex}
               metadata={metadata}
+              totalSeconds={totalSeconds}
               onUpdateClip={handleUpdateClip}
               onDeleteClip={handleDeleteClip}
               onMoveClip={handleMoveClip}
