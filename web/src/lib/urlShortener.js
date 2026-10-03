@@ -1,7 +1,7 @@
 // Shortens share links with the tinyurl app on Volcano (go.apexarkai.com).
 // The API only accepts requests whose Origin is on its allowlist, which
 // includes https://rickyjou.github.io.
-const TINYURL_API = 'https://222b03b1-9b0e-45e8-8d20-a97e8a494853.frontends.volcano.run/api/links'
+export const TINYURL_API = 'https://222b03b1-9b0e-45e8-8d20-a97e8a494853.frontends.volcano.run/api/links'
 
 // Must match the tinyurl `links` table constraint.
 const MAX_URL_LENGTH = 8192

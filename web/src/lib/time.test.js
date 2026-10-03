@@ -7,7 +7,15 @@ import {
   formatCountdown,
   secondsUntilPlaylistStart,
   getPlaylistStartTime,
+  pad,
 } from './time.js'
+
+describe('pad', () => {
+  it('left-pads single digits to two characters', () => {
+    expect(pad(5)).toBe('05')
+    expect(pad(12)).toBe('12')
+  })
+})
 
 describe('formatTime', () => {
   it('formats seconds under a minute', () => {
@@ -34,6 +42,14 @@ describe('calculateTotalSeconds', () => {
 
   it('returns 0 for an empty playlist', () => {
     expect(calculateTotalSeconds([])).toBe(0)
+  })
+
+  it('counts a clip whose start is after its end as zero, not negative', () => {
+    const playlist = [
+      { videoId: 'a', start: 0, end: 100 },
+      { videoId: 'b', start: 50, end: 20 },
+    ]
+    expect(calculateTotalSeconds(playlist)).toBe(100)
   })
 })
 

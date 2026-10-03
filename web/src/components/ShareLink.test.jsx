@@ -7,8 +7,8 @@ vi.mock('../lib/urlShortener.js', () => ({ shortenUrl: vi.fn() }))
 
 const SHORT_URL = 'http://go.apexarkai.com/AbCd1234'
 
-const playlist = [{ videoId: 'abc123', start: 0, end: 10 }]
-const otherPlaylist = [{ videoId: 'xyz789', start: 0, end: 20 }]
+const playlist = [{ videoId: 'abcdefghijk', start: 0, end: 10 }]
+const otherPlaylist = [{ videoId: 'xyz78901234', start: 0, end: 20 }]
 
 async function generate() {
   await act(async () => {
@@ -107,5 +107,33 @@ describe('ShareLink', () => {
 
     resolveShorten(SHORT_URL)
     await waitFor(() => expect(screen.getByRole('textbox')).toBeInTheDocument())
+  })
+
+  it('refuses to build a link the shared view would reject, and says why', async () => {
+    const tooLong = Array.from({ length: 501 }, () => ({ videoId: 'abcdefghijk', start: 0, end: 1 }))
+    render(<ShareLink playlist={tooLong} />)
+    await generate()
+
+    expect(shortenUrl).not.toHaveBeenCalled()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent(/can.t be shared/i)
+  })
+
+  it('refuses a clip whose start is after its end', async () => {
+    render(<ShareLink playlist={[{ videoId: 'abcdefghijk', start: 30, end: 10 }]} />)
+    await generate()
+
+    expect(shortenUrl).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent(/can.t be shared/i)
+  })
+
+  it('clears the share error once the playlist prop changes', async () => {
+    const { rerender } = render(<ShareLink playlist={[{ videoId: 'abcdefghijk', start: 30, end: 10 }]} />)
+    await generate()
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+
+    rerender(<ShareLink playlist={playlist} />)
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

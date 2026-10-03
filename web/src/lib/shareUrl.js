@@ -1,8 +1,11 @@
 import { VIDEO_ID_PATTERN } from './youtubeInput.js'
 import { stripClipIds } from './clipIds.js'
 
+export const MAX_CLIPS = 500
+export const MAX_CLIP_SECONDS = 86400
+
 export function isValidPlaylist(value) {
-  if (!Array.isArray(value)) return false
+  if (!Array.isArray(value) || value.length > MAX_CLIPS) return false
   return value.every(
     (clip) =>
       clip !== null &&
@@ -12,7 +15,8 @@ export function isValidPlaylist(value) {
       Number.isFinite(clip.start) &&
       Number.isFinite(clip.end) &&
       clip.start >= 0 &&
-      clip.end >= clip.start,
+      clip.end >= clip.start &&
+      clip.end <= MAX_CLIP_SECONDS,
   )
 }
 
