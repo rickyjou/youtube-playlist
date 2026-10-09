@@ -1,0 +1,156 @@
+import { describe, it, expect } from 'vitest'
+import {
+  locatePlaylistPosition,
+  formatTime,
+  calculateTotalSeconds,
+  formatClockTime,
+  formatCountdown,
+  secondsUntilPlaylistStart,
+  getPlaylistStartTime,
+  pad,
+} from './time.js'
+
+describe('pad', () => {
+  it('left-pads single digits to two characters', () => {
+    expect(pad(5)).toBe('05')
+    expect(pad(12)).toBe('12')
+  })
+})
+
+describe('formatTime', () => {
+  it('formats seconds under a minute', () => {
+    expect(formatTime(45)).toBe('0:45')
+  })
+
+  it('pads seconds under 10', () => {
+    expect(formatTime(65)).toBe('1:05')
+  })
+
+  it('formats multiple minutes', () => {
+    expect(formatTime(725)).toBe('12:05')
+  })
+})
+
+describe('calculateTotalSeconds', () => {
+  it('sums durations across clips', () => {
+    const playlist = [
+      { videoId: 'a', start: 0, end: 100 },
+      { videoId: 'b', start: 10, end: 40 },
+    ]
+    expect(calculateTotalSeconds(playlist)).toBe(130)
+  })
+
+  it('returns 0 for an empty playlist', () => {
+    expect(calculateTotalSeconds([])).toBe(0)
+  })
+
+  it('counts a clip whose start is after its end as zero, not negative', () => {
+    const playlist = [
+      { videoId: 'a', start: 0, end: 100 },
+      { videoId: 'b', start: 50, end: 20 },
+    ]
+    expect(calculateTotalSeconds(playlist)).toBe(100)
+  })
+})
+
+describe('formatClockTime', () => {
+  it('formats a morning time with AM', () => {
+    expect(formatClockTime(new Date(2026, 0, 1, 9, 5, 3))).toBe('9:05:03 AM')
+  })
+
+  it('formats an afternoon time with PM and 12-hour rollover', () => {
+    expect(formatClockTime(new Date(2026, 0, 1, 14, 32, 7))).toBe('2:32:07 PM')
+  })
+
+  it('formats noon as 12 PM', () => {
+    expect(formatClockTime(new Date(2026, 0, 1, 12, 0, 0))).toBe('12:00:00 PM')
+  })
+
+  it('formats midnight as 12 AM', () => {
+    expect(formatClockTime(new Date(2026, 0, 1, 0, 0, 0))).toBe('12:00:00 AM')
+  })
+})
+
+describe('formatCountdown', () => {
+  it('zero-pads minutes and seconds', () => {
+    expect(formatCountdown(45)).toBe('00:45')
+  })
+
+  it('formats minutes under an hour', () => {
+    expect(formatCountdown(2699)).toBe('44:59')
+  })
+
+  it('formats zero as 00:00', () => {
+    expect(formatCountdown(0)).toBe('00:00')
+  })
+})
+
+describe('secondsUntilPlaylistStart', () => {
+  it('counts down to the start-of-hour offset for a 15 minute playlist', () => {
+    // 15 min playlist starts at :45 past the hour; at :10 past, 35 min = 2100s remain
+    const now = new Date(2026, 0, 1, 3, 10, 0)
+    expect(secondsUntilPlaylistStart(15 * 60, now)).toBe(35 * 60)
+  })
+
+  it('returns 0 exactly at the start offset', () => {
+    const now = new Date(2026, 0, 1, 3, 45, 0)
+    expect(secondsUntilPlaylistStart(15 * 60, now)).toBe(0)
+  })
+
+  it('wraps to next hour once past the start offset', () => {
+    // 15 min playlist starts at :45; at :50 past, next start is 55 min away
+    const now = new Date(2026, 0, 1, 3, 50, 0)
+    expect(secondsUntilPlaylistStart(15 * 60, now)).toBe(55 * 60)
+  })
+
+  it('always returns 0 when total time is an hour or more', () => {
+    const now = new Date(2026, 0, 1, 3, 22, 0)
+    expect(secondsUntilPlaylistStart(3600, now)).toBe(0)
+    expect(secondsUntilPlaylistStart(4000, now)).toBe(0)
+  })
+})
+
+describe('getPlaylistStartTime', () => {
+  it('returns the clock time the playlist will start, offset by the countdown', () => {
+    // 15 min playlist starts at :45 past the hour; at :10 past, that's 35 min away
+    const now = new Date(2026, 0, 1, 3, 10, 0)
+    expect(getPlaylistStartTime(15 * 60, now)).toEqual(new Date(2026, 0, 1, 3, 45, 0))
+  })
+
+  it('returns now when total time is an hour or more', () => {
+    const now = new Date(2026, 0, 1, 3, 22, 0)
+    expect(getPlaylistStartTime(3600, now)).toEqual(now)
+  })
+})
+
+describe('locatePlaylistPosition', () => {
+  const playlist = [
+    { videoId: 'a', start: 10, end: 40 }, // 30s
+    { videoId: 'b', start: 0, end: 20 }, // 20s
+    { videoId: 'c', start: 5, end: 65 }, // 60s
+  ]
+
+  it('starts at the first clip start when no time has elapsed', () => {
+    expect(locatePlaylistPosition(playlist, 0)).toEqual({ index: 0, start: 10 })
+  })
+
+  it('offsets into the clip that is playing', () => {
+    expect(locatePlaylistPosition(playlist, 12)).toEqual({ index: 0, start: 22 })
+    expect(locatePlaylistPosition(playlist, 45)).toEqual({ index: 1, start: 15 })
+    expect(locatePlaylistPosition(playlist, 70)).toEqual({ index: 2, start: 25 })
+  })
+
+  it('moves to the next clip exactly at a clip boundary', () => {
+    expect(locatePlaylistPosition(playlist, 30)).toEqual({ index: 1, start: 0 })
+  })
+
+  it('skips zero-length clips', () => {
+    const withEmpty = [{ videoId: 'a', start: 5, end: 5 }, ...playlist]
+    expect(locatePlaylistPosition(withEmpty, 0)).toEqual({ index: 1, start: 10 })
+  })
+
+  it('returns null once the whole playlist has elapsed', () => {
+    expect(locatePlaylistPosition(playlist, 110)).toBeNull()
+    expect(locatePlaylistPosition([], 0)).toBeNull()
+  })
+})

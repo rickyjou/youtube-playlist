@@ -1,0 +1,555 @@
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { vi } from 'vitest'
+import App from './App.jsx'
+import * as youtubeApi from './lib/youtubeApi.js'
+
+vi.mock('./components/YouTubePlayer.jsx', () => ({
+  default: ({ videoId, start, onEnded, autoplayToken }) => (
+    <div data-testid="player" data-autoplay-token={autoplayToken} data-start={start}>
+      {videoId}
+      <button onClick={onEnded}>simulate ended</button>
+    </div>
+  ),
+}))
+
+vi.mock('./lib/youtubeApi.js')
+
+describe('App', () => {
+  beforeEach(() => {
+    // Top of the hour: no shared playlist shorter than an hour is running, so
+    // shared-view tests don't jump into a playlist depending on the real time.
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(2026, 0, 1, 3, 0, 0))
+    window.history.pushState({}, '', '/')
+    youtubeApi.fetchVideoMetadata.mockReset().mockResolvedValue({})
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('renders the page heading', () => {
+    render(<App />)
+    expect(screen.getByRole('heading', { name: /youtube playlist/i })).toBeInTheDocument()
+  })
+
+  it('titles the editor as the duration calculator and player', () => {
+    render(<App />)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('YouTube Playlist Duration Calculator & Player')
+  })
+
+  it('titles a shared playlist page simply as the player', () => {
+    window.history.pushState({}, '', `/?playlist=${btoa(JSON.stringify([{ videoId: 'sharedvid01', start: 0, end: 20 }]))}`)
+    render(<App />)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/^YouTube Playlist Player$/)
+  })
+
+  it('opens the GitHub link without exposing window.opener', () => {
+    render(<App />)
+    expect(screen.getByText('Github Repository')).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  it('shows the build version next to the GitHub link in the footer of the editor', () => {
+    render(<App />)
+    const footer = screen.getByRole('contentinfo')
+    expect(footer).toContainElement(screen.getByText('Github Repository'))
+    expect(footer).toHaveTextContent(__APP_VERSION__)
+    expect(__APP_VERSION__).toMatch(/^v\d{4}\.\d{2}\.\d{2}-\d{4} \(build \w+\)$/)
+  })
+
+  it('shows no footer, GitHub link, or build version on a shared playlist page', () => {
+    const encoded = btoa(JSON.stringify([{ videoId: 'sharedvid01', start: 0, end: 20 }]))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+
+    render(<App />)
+
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
+    expect(screen.queryByText('Github Repository')).not.toBeInTheDocument()
+    expect(screen.queryByText(__APP_VERSION__)).not.toBeInTheDocument()
+  })
+
+  it('keeps the remaining rows mounted when an earlier clip is deleted', () => {
+    render(<App />)
+    const secondRow = screen.getAllByRole('listitem')[1]
+
+    fireEvent.click(screen.getAllByText('Delete')[0])
+
+    expect(screen.getAllByRole('listitem')[0]).toBe(secondRow)
+  })
+
+  it('keeps both rows mounted when clips are reordered', () => {
+    render(<App />)
+    const [firstRow, secondRow] = screen.getAllByRole('listitem')
+
+    fireEvent.click(screen.getAllByText('↓')[0])
+
+    const [newFirst, newSecond] = screen.getAllByRole('listitem')
+    expect(newFirst).toBe(secondRow)
+    expect(newSecond).toBe(firstRow)
+  })
+
+  it('starts with the default demo playlist when no share link is present', () => {
+    render(<App />)
+    expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+  })
+
+  it('loads the playlist from a shared URL instead of the default', () => {
+    const shared = [{ videoId: 'sharedvid01', start: 0, end: 20 }]
+    const encoded = btoa(JSON.stringify(shared))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+
+    render(<App />)
+
+    expect(screen.getByTestId('player')).toHaveTextContent('sharedvid01')
+  })
+
+  it('shows only the player, total time, and clock for a shared playlist, hiding all editing controls', () => {
+    const shared = [{ videoId: 'sharedvid01', start: 0, end: 20 }]
+    const encoded = btoa(JSON.stringify(shared))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+
+    render(<App />)
+
+    expect(screen.getByText('Total time: 0:20')).toBeInTheDocument()
+    expect(screen.getByText(/Current time:/)).toBeInTheDocument()
+    expect(screen.getByText(/Starts in:/)).toBeInTheDocument()
+    expect(screen.queryByText('Delete')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/start/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/end/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('YouTube link')).not.toBeInTheDocument()
+    expect(screen.queryByText('Generate Shareable Link')).not.toBeInTheDocument()
+    expect(screen.queryByText('Show advanced JSON editor')).not.toBeInTheDocument()
+  })
+
+  it('shows the full editor (start/end fields, delete, share, add) for the default non-shared playlist', () => {
+    render(<App />)
+
+    expect(screen.getAllByLabelText('Start minutes')).not.toHaveLength(0)
+    expect(screen.getAllByLabelText('End minutes')).not.toHaveLength(0)
+    expect(screen.getAllByText('Delete')).not.toHaveLength(0)
+    expect(screen.getByLabelText('YouTube link')).toBeInTheDocument()
+    expect(screen.getByText('Generate Shareable Link')).toBeInTheDocument()
+    expect(screen.getByText('Show advanced JSON editor')).toBeInTheDocument()
+  })
+
+  it('does not show prev/next clip buttons in the default non-shared editing view', () => {
+    render(<App />)
+
+    expect(screen.queryByLabelText('Previous clip')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Next clip')).not.toBeInTheDocument()
+  })
+
+  it('does not show a fullscreen toggle button in the default non-shared editing view', () => {
+    render(<App />)
+
+    expect(screen.queryByLabelText(/fullscreen/i)).not.toBeInTheDocument()
+  })
+
+  it('requests fullscreen on the player wrapper when the fullscreen button is clicked in shared view', () => {
+    const shared = [{ videoId: 'sharedvid01', start: 0, end: 20 }]
+    const encoded = btoa(JSON.stringify(shared))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+    const requestFullscreen = vi.fn()
+    HTMLElement.prototype.requestFullscreen = requestFullscreen
+
+    render(<App />)
+    fireEvent.click(screen.getByLabelText('Enter fullscreen'))
+
+    expect(requestFullscreen).toHaveBeenCalledTimes(1)
+  })
+
+  it('hides the fullscreen toggle after inactivity in fullscreen, and shows it again on mouse movement', () => {
+    const shared = [{ videoId: 'sharedvid01', start: 0, end: 20 }]
+    const encoded = btoa(JSON.stringify(shared))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+    HTMLElement.prototype.requestFullscreen = vi.fn()
+
+    vi.useFakeTimers()
+    const { container } = render(<App />)
+    const wrapper = container.querySelector('.player-wrapper')
+
+    Object.defineProperty(document, 'fullscreenElement', { value: wrapper, configurable: true })
+    fireEvent(document, new Event('fullscreenchange'))
+
+    expect(wrapper.className).not.toContain('controls-hidden')
+
+    act(() => {
+      vi.advanceTimersByTime(2500)
+    })
+    expect(wrapper.className).toContain('controls-hidden')
+
+    fireEvent.mouseMove(wrapper)
+    expect(wrapper.className).not.toContain('controls-hidden')
+
+    vi.useRealTimers()
+  })
+
+  it('switches to Exit fullscreen once fullscreen is entered, and exits it when clicked again', () => {
+    const shared = [{ videoId: 'sharedvid01', start: 0, end: 20 }]
+    const encoded = btoa(JSON.stringify(shared))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+    HTMLElement.prototype.requestFullscreen = vi.fn()
+    const exitFullscreen = vi.fn()
+    document.exitFullscreen = exitFullscreen
+
+    const { container } = render(<App />)
+    const wrapper = container.querySelector('.player-wrapper')
+
+    Object.defineProperty(document, 'fullscreenElement', { value: wrapper, configurable: true })
+    fireEvent(document, new Event('fullscreenchange'))
+
+    const exitButton = screen.getByLabelText('Exit fullscreen')
+    fireEvent.click(exitButton)
+    expect(exitFullscreen).toHaveBeenCalledTimes(1)
+
+    Object.defineProperty(document, 'fullscreenElement', { value: null, configurable: true })
+    fireEvent(document, new Event('fullscreenchange'))
+
+    expect(screen.getByLabelText('Enter fullscreen')).toBeInTheDocument()
+  })
+
+  it('advances to the next clip and wraps to the first when Next is clicked past the last clip in shared view', () => {
+    const shared = [
+      { videoId: 'sharedvid01', start: 0, end: 20 },
+      { videoId: 'sharedvid02', start: 0, end: 30 },
+    ]
+    const encoded = btoa(JSON.stringify(shared))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+
+    render(<App />)
+    expect(screen.getByTestId('player')).toHaveTextContent('sharedvid01')
+
+    fireEvent.click(screen.getByLabelText('Next clip'))
+    expect(screen.getByTestId('player')).toHaveTextContent('sharedvid02')
+
+    fireEvent.click(screen.getByLabelText('Next clip'))
+    expect(screen.getByTestId('player')).toHaveTextContent('sharedvid01')
+  })
+
+  it('goes to the previous clip and wraps to the last when Previous is clicked before the first clip in shared view', () => {
+    const shared = [
+      { videoId: 'sharedvid01', start: 0, end: 20 },
+      { videoId: 'sharedvid02', start: 0, end: 30 },
+    ]
+    const encoded = btoa(JSON.stringify(shared))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+
+    render(<App />)
+    expect(screen.getByTestId('player')).toHaveTextContent('sharedvid01')
+
+    fireEvent.click(screen.getByLabelText('Previous clip'))
+    expect(screen.getByTestId('player')).toHaveTextContent('sharedvid02')
+  })
+
+  describe('shared-view autoplay', () => {
+    const FIFTEEN_MIN = [{ videoId: 'sharedvid01', start: 0, end: 900 }] // runs 3:45-4:00
+    const TWO_CLIPS = [
+      { videoId: 'sharedvid01', start: 0, end: 300 },
+      { videoId: 'sharedvid02', start: 10, end: 610 },
+    ] // 15 min total, runs 3:45-4:00
+
+    function openSharedLinkAt(time, playlist = FIFTEEN_MIN) {
+      vi.useFakeTimers()
+      vi.setSystemTime(time)
+      window.history.pushState({}, '', `/?playlist=${btoa(JSON.stringify(playlist))}`)
+      HTMLElement.prototype.requestFullscreen = vi.fn()
+      const result = render(<App />)
+      return { ...result, wrapper: result.container.querySelector('.player-wrapper') }
+    }
+
+    function setFullscreen(element) {
+      Object.defineProperty(document, 'fullscreenElement', { value: element, configurable: true })
+      fireEvent(document, new Event('fullscreenchange'))
+    }
+
+    const autoplayToken = () => screen.getByTestId('player').dataset.autoplayToken
+
+    afterEach(() => {
+      Object.defineProperty(document, 'fullscreenElement', { value: null, configurable: true })
+    })
+
+    it('autoplays when the countdown reaches zero in fullscreen', () => {
+      const { wrapper } = openSharedLinkAt(new Date(2026, 0, 1, 3, 44, 58))
+      setFullscreen(wrapper)
+
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+
+      expect(autoplayToken()).toBe('1')
+    })
+
+    it('does not autoplay when the countdown reaches zero outside fullscreen', () => {
+      openSharedLinkAt(new Date(2026, 0, 1, 3, 44, 58))
+
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+
+      expect(autoplayToken()).toBe('0')
+    })
+
+    it('does not autoplay when opened while the playlist is running, and counts down to the next run', () => {
+      const { wrapper } = openSharedLinkAt(new Date(2026, 0, 1, 3, 52, 30))
+      setFullscreen(wrapper)
+
+      expect(autoplayToken()).toBe('0')
+      expect(wrapper.querySelector('.countdown-overlay')).toHaveTextContent('52:30')
+    })
+
+    it('does not autoplay on opening a playlist an hour or longer', () => {
+      openSharedLinkAt(new Date(2026, 0, 1, 3, 20, 0), [{ videoId: 'sharedvid01', start: 0, end: 3600 }])
+
+      expect(autoplayToken()).toBe('0')
+    })
+
+    it('starts where the playlist should be if zero was reached late in fullscreen', () => {
+      const { wrapper } = openSharedLinkAt(new Date(2026, 0, 1, 3, 44, 58), TWO_CLIPS)
+      setFullscreen(wrapper)
+
+      // A throttled window: time passes the start before any timer runs.
+      vi.setSystemTime(new Date(2026, 0, 1, 3, 46, 0))
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+
+      expect(autoplayToken()).toBe('1')
+      expect(screen.getByTestId('player')).toHaveTextContent('sharedvid01')
+      expect(screen.getByTestId('player').dataset.start).toBe('61')
+
+      fireEvent.click(screen.getByText('simulate ended'))
+      expect(screen.getByTestId('player')).toHaveTextContent('sharedvid02')
+      expect(screen.getByTestId('player').dataset.start).toBe('10')
+    })
+
+    it('plays a clip from its own start after using next/previous following a late start', () => {
+      const { wrapper } = openSharedLinkAt(new Date(2026, 0, 1, 3, 44, 58), TWO_CLIPS)
+      setFullscreen(wrapper)
+      vi.setSystemTime(new Date(2026, 0, 1, 3, 46, 0))
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+
+      fireEvent.click(screen.getByLabelText('Next clip'))
+      fireEvent.click(screen.getByLabelText('Previous clip'))
+
+      expect(screen.getByTestId('player')).toHaveTextContent('sharedvid01')
+      expect(screen.getByTestId('player').dataset.start).toBe('0')
+    })
+  })
+
+  describe('fullscreen countdown', () => {
+    function openSharedLinkAt(time) {
+      vi.useFakeTimers()
+      vi.setSystemTime(time)
+      const shared = [{ videoId: 'sharedvid01', start: 0, end: 900 }] // runs 3:45-4:00
+      window.history.pushState({}, '', `/?playlist=${btoa(JSON.stringify(shared))}`)
+      HTMLElement.prototype.requestFullscreen = vi.fn()
+      const result = render(<App />)
+      return { ...result, wrapper: result.container.querySelector('.player-wrapper') }
+    }
+
+    function enterFullscreen(wrapper) {
+      Object.defineProperty(document, 'fullscreenElement', { value: wrapper, configurable: true })
+      fireEvent(document, new Event('fullscreenchange'))
+    }
+
+    afterEach(() => {
+      Object.defineProperty(document, 'fullscreenElement', { value: null, configurable: true })
+    })
+
+    it('offers a Go fullscreen button before the start that fullscreens the player', () => {
+      const { wrapper } = openSharedLinkAt(new Date(2026, 0, 1, 3, 40, 0))
+
+      fireEvent.click(screen.getByRole('button', { name: /go fullscreen/i }))
+
+      expect(HTMLElement.prototype.requestFullscreen).toHaveBeenCalledTimes(1)
+      expect(HTMLElement.prototype.requestFullscreen.mock.contexts[0]).toBe(wrapper)
+    })
+
+    it('does not offer Go fullscreen in the editor', () => {
+      render(<App />)
+      expect(screen.queryByRole('button', { name: /go fullscreen/i })).not.toBeInTheDocument()
+    })
+
+    it('hides Go fullscreen once in fullscreen, and once the countdown has finished', () => {
+      const { wrapper } = openSharedLinkAt(new Date(2026, 0, 1, 3, 44, 58))
+
+      enterFullscreen(wrapper)
+      expect(screen.queryByRole('button', { name: /go fullscreen/i })).not.toBeInTheDocument()
+
+      Object.defineProperty(document, 'fullscreenElement', { value: null, configurable: true })
+      fireEvent(document, new Event('fullscreenchange'))
+      expect(screen.getByRole('button', { name: /go fullscreen/i })).toBeInTheDocument()
+
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+      expect(screen.queryByRole('button', { name: /go fullscreen/i })).not.toBeInTheDocument()
+    })
+
+    it('shows a live countdown over the player in fullscreen until playback starts', () => {
+      const { wrapper } = openSharedLinkAt(new Date(2026, 0, 1, 3, 44, 57))
+      expect(wrapper.querySelector('.countdown-overlay')).not.toBeInTheDocument()
+
+      enterFullscreen(wrapper)
+      const overlay = wrapper.querySelector('.countdown-overlay')
+      expect(overlay).toHaveTextContent('Starts in')
+      expect(overlay).toHaveTextContent('00:03')
+
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+      expect(overlay).toHaveTextContent('00:02')
+
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+      expect(wrapper.querySelector('.countdown-overlay')).not.toBeInTheDocument()
+      expect(screen.getByTestId('player').dataset.autoplayToken).toBe('1')
+    })
+  })
+
+  it('advances to the next clip when the player reports the current clip ended', () => {
+    render(<App />)
+    expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+
+    fireEvent.click(screen.getByText('simulate ended'))
+
+    expect(screen.getByTestId('player')).toHaveTextContent('gUSWWqnOKt0')
+  })
+
+  it('shows the next clip after deleting the currently playing one', () => {
+    render(<App />)
+    expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+
+    fireEvent.click(screen.getAllByText('Delete')[0])
+
+    expect(screen.getByTestId('player')).toHaveTextContent('gUSWWqnOKt0')
+  })
+
+  it('does not leave currentIndex out of bounds when deleting the last clip', () => {
+    render(<App />)
+    expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+
+    // Advance to the second clip (which is also the last)
+    fireEvent.click(screen.getByText('simulate ended'))
+    expect(screen.getByTestId('player')).toHaveTextContent('gUSWWqnOKt0')
+
+    // Delete the currently playing (last) clip
+    fireEvent.click(screen.getAllByText('Delete')[1])
+
+    // Should now show the remaining first clip, not disappear
+    expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+  })
+
+  it('bounds-checks a move against the playlist as already changed in the same batch', () => {
+    render(<App />)
+    const deleteSecond = screen.getAllByText('Delete')[1]
+    const moveFirstDown = screen.getAllByText('↓')[0]
+
+    // Both handlers run before React re-renders, so the move must see the
+    // one-clip playlist the delete left behind, not the two-clip render.
+    act(() => {
+      fireEvent.click(deleteSecond)
+      fireEvent.click(moveFirstDown)
+    })
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(1)
+    expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+  })
+
+  it('passes stable clip handlers so editing one row does not re-render the others', async () => {
+    // Counts how often the second row renders: its title getter is read on every render.
+    let secondRowRenders = 0
+    const secondMeta = {
+      get title() {
+        secondRowRenders += 1
+        return 'Second video'
+      },
+    }
+    youtubeApi.fetchVideoMetadata.mockResolvedValue({ gUSWWqnOKt0: secondMeta })
+    render(<App />)
+    await screen.findByText('Second video')
+    const rendersBeforeEdit = secondRowRenders
+
+    fireEvent.change(screen.getAllByLabelText('End seconds')[0], { target: { value: '5' } })
+
+    expect(screen.getAllByLabelText('End seconds')[0]).toHaveValue(5)
+    expect(secondRowRenders).toBe(rendersBeforeEdit)
+  })
+
+  it('keeps following the currently-playing clip when it is moved down', () => {
+    render(<App />)
+    expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+
+    fireEvent.click(screen.getAllByText('↓')[0])
+
+    expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+  })
+
+  it('keeps following the currently-playing clip when another clip is moved past it', () => {
+    render(<App />)
+    fireEvent.click(screen.getByText('simulate ended'))
+    expect(screen.getByTestId('player')).toHaveTextContent('gUSWWqnOKt0')
+
+    fireEvent.click(screen.getAllByText('↓')[0])
+
+    expect(screen.getByTestId('player')).toHaveTextContent('gUSWWqnOKt0')
+  })
+
+  it('replaces the whole playlist and resets to the first clip when a playlist link is submitted', async () => {
+    youtubeApi.fetchPlaylistVideoIds.mockResolvedValue(['newVid'])
+    youtubeApi.fetchVideoMetadata.mockResolvedValue({
+      newVid: { title: 'New', thumbnail: '', durationSeconds: 42 },
+    })
+    render(<App />)
+    expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+
+    fireEvent.change(screen.getByLabelText('YouTube link'), {
+      target: { value: 'https://www.youtube.com/playlist?list=PLxyz' },
+    })
+    fireEvent.click(screen.getByText('Add'))
+
+    await waitFor(() => expect(screen.getByTestId('player')).toHaveTextContent('newVid'))
+    expect(screen.queryByText('6MTbZBg9pQc')).not.toBeInTheDocument()
+  })
+
+  it('appends a single video to the existing playlist when a video link is submitted', async () => {
+    youtubeApi.fetchVideoMetadata.mockResolvedValue({
+      newVid: { title: 'New', thumbnail: '', durationSeconds: 42 },
+    })
+    render(<App />)
+    expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+
+    fireEvent.change(screen.getByLabelText('YouTube link'), {
+      target: { value: 'https://www.youtube.com/watch?v=newVid12345' },
+    })
+    fireEvent.click(screen.getByText('Add'))
+
+    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(3))
+    expect(screen.getByTestId('player')).toHaveTextContent('6MTbZBg9pQc')
+  })
+
+  it('fetches metadata for the default playlist on mount so titles and end-time reset use real video data', async () => {
+    youtubeApi.fetchVideoMetadata.mockResolvedValue({
+      '6MTbZBg9pQc': { title: 'Video One', thumbnail: '', durationSeconds: 761 },
+      gUSWWqnOKt0: { title: 'Video Two', thumbnail: '', durationSeconds: 140 },
+    })
+    render(<App />)
+
+    await waitFor(() => expect(screen.getByText('Video One')).toBeInTheDocument())
+    expect(screen.getByText('Video Two')).toBeInTheDocument()
+  })
+
+  it('does not fetch metadata when viewing a shared playlist', () => {
+    const shared = [{ videoId: 'sharedvid01', start: 0, end: 20 }]
+    const encoded = btoa(JSON.stringify(shared))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+
+    render(<App />)
+
+    expect(youtubeApi.fetchVideoMetadata).not.toHaveBeenCalled()
+  })
+})
