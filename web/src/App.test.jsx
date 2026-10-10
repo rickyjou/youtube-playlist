@@ -23,6 +23,7 @@ describe('App', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(new Date(2026, 0, 1, 3, 0, 0))
     window.history.pushState({}, '', '/')
+    localStorage.clear()
     youtubeApi.fetchVideoMetadata.mockReset().mockResolvedValue({})
   })
 
@@ -572,5 +573,28 @@ describe('App', () => {
     render(<App />)
 
     expect(screen.getByTestId('player')).toHaveAttribute('data-has-on-error', 'false')
+  })
+
+  it('restores the edited playlist after a page reload instead of the default', () => {
+    const { unmount } = render(<App />)
+    fireEvent.click(screen.getAllByText('Delete')[0])
+    expect(screen.getAllByRole('listitem')).toHaveLength(1)
+    unmount()
+
+    render(<App />)
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(1)
+    expect(screen.getByTestId('player')).toHaveTextContent('gUSWWqnOKt0')
+  })
+
+  it('does not overwrite the saved editor playlist when a shared link is opened', () => {
+    localStorage.setItem('playlist', JSON.stringify([{ videoId: 'savedvid001', start: 0, end: 10 }]))
+    const encoded = btoa(JSON.stringify([{ videoId: 'sharedvid01', start: 0, end: 20 }]))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+
+    render(<App />)
+
+    expect(screen.getByTestId('player')).toHaveTextContent('sharedvid01')
+    expect(JSON.parse(localStorage.getItem('playlist'))).toEqual([{ videoId: 'savedvid001', start: 0, end: 10 }])
   })
 })

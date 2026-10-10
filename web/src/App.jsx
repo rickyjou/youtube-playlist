@@ -7,6 +7,7 @@ import ShareLink from './components/ShareLink.jsx'
 import SharedClock from './components/SharedClock.jsx'
 import CountdownOverlay from './components/CountdownOverlay.jsx'
 import { decodePlaylistFromUrl } from './lib/shareUrl.js'
+import { loadSavedPlaylist, savePlaylist } from './lib/savedPlaylist.js'
 import { withClipIds } from './lib/clipIds.js'
 import { calculateTotalSeconds, locatePlaylistPosition } from './lib/time.js'
 import { fetchVideoMetadata } from './lib/youtubeApi.js'
@@ -34,7 +35,8 @@ function getEffectiveTheme(theme) {
 export default function App() {
   const [initialState] = useState(() => {
     const shared = decodePlaylistFromUrl(window.location.search)
-    return { playlist: withClipIds(shared ?? DEFAULT_PLAYLIST), isSharedView: shared != null }
+    if (shared) return { playlist: withClipIds(shared), isSharedView: true }
+    return { playlist: withClipIds(loadSavedPlaylist() ?? DEFAULT_PLAYLIST), isSharedView: false }
   })
   const [playlist, setPlaylist] = useState(initialState.playlist)
   // Always the newest playlist, even ahead of a pending re-render, so handlers
@@ -106,6 +108,12 @@ export default function App() {
       if (!settled) missingIds.forEach((id) => requested.delete(id))
     }
   }, [playlist, metadata, isSharedView])
+
+  // Keep the editor's playlist across reloads. A shared link shows someone
+  // else's playlist, so it must never overwrite the viewer's own.
+  useEffect(() => {
+    if (!isSharedView) savePlaylist(playlist)
+  }, [playlist, isSharedView])
 
   function handlePlayerMouseMove() {
     scheduleHideControls()
