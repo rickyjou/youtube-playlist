@@ -10,9 +10,16 @@
   Check a specific commit's deploy: `gh run list --repo rickyjou/youtube-playlist --limit 3
   --json headSha,status,conclusion`.
 
-## GitHub / PRs
-- One remote: `origin` = `rickyjou/youtube-playlist`. Feature branches get merged into `main`
-  via PRs opened there; pass `--repo rickyjou/youtube-playlist` to `gh` commands when in doubt.
+## Git workflow
+- One remote: `origin` = `rickyjou/youtube-playlist`; pass `--repo rickyjou/youtube-playlist` to
+  `gh` commands when in doubt.
+- Solo repo: commit directly on `main`; push only when asked. Pushing to `main` deploys, so local
+  commits are the safe holding area.
+- Use a branch only to push work-in-progress without deploying, or for an experiment you may discard.
+- Use a git worktree only when multiple Claude sessions work on the repo in parallel. A worktree
+  can't also check out `main`, so it gets its own branch; fast-forward or merge that into `main`
+  locally when done (still no PR).
+- No PRs.
 
 ## Gotchas
 - `App.jsx`'s metadata-fetch effect must (1) skip `setMetadata` when the fetch result is empty
