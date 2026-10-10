@@ -68,8 +68,14 @@ const ClipRow = memo(function ClipRow({ index, clip, meta, playerError, isPlayin
         <span className="clip-index">{index + 1}.</span>
         {meta?.thumbnail && <img src={meta.thumbnail} alt="" width="60" height="45" loading="lazy" />}
         {problem && (
-          <span className="clip-error-icon" role="img" aria-label={problem} title={problem}>
-            ⚠
+          // A CSS tooltip rather than `title`, whose native tooltip shows after a delay in small text.
+          <span className="clip-error">
+            <span className="clip-error-icon" role="img" aria-label={problem}>
+              ⚠
+            </span>
+            <span className="clip-error-tooltip" aria-hidden="true">
+              {problem}
+            </span>
           </span>
         )}
         <span className="clip-title" title={title}>

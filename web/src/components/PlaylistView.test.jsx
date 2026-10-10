@@ -147,7 +147,9 @@ describe('PlaylistView', () => {
     const rows = screen.getAllByRole('listitem')
 
     const icon = within(rows[1]).getByRole('img', { name: 'Embedding disabled by the owner' })
-    expect(icon).toHaveAttribute('title', 'Embedding disabled by the owner')
+    // A custom tooltip, not the native title one, which shows slowly in small text.
+    expect(icon).not.toHaveAttribute('title')
+    expect(within(rows[1]).getByText('Embedding disabled by the owner')).toHaveClass('clip-error-tooltip')
     expect(within(rows[0]).queryByRole('img', { name: /embedding/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
