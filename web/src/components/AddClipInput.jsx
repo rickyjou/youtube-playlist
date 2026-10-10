@@ -1,19 +1,29 @@
 import { useState } from 'react'
 import { parseYouTubeInput } from '../lib/youtubeInput.js'
 import { fetchVideoMetadata, fetchPlaylistVideoIds } from '../lib/youtubeApi.js'
+import { describeClipProblem } from '../lib/playbackProblems.js'
 
 function toClip(videoId, metadata) {
   return { videoId, start: 0, end: metadata[videoId]?.durationSeconds ?? 0 }
 }
 
+function findUnplayable(videoIds, metadata) {
+  return videoIds.flatMap((videoId) => {
+    const problem = describeClipProblem(metadata[videoId])
+    return problem ? [{ videoId, title: metadata[videoId]?.title ?? videoId, problem }] : []
+  })
+}
+
 export default function AddClipInput({ apiKey, onAddClips, onLoadPlaylist }) {
   const [url, setUrl] = useState('')
   const [error, setError] = useState('')
+  const [unplayable, setUnplayable] = useState([])
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(event) {
     event.preventDefault()
     setError('')
+    setUnplayable([])
 
     const parsed = parseYouTubeInput(url)
     if (parsed.type === 'invalid') {
@@ -26,11 +36,13 @@ export default function AddClipInput({ apiKey, onAddClips, onLoadPlaylist }) {
       if (parsed.type === 'video') {
         const metadata = await fetchVideoMetadata([parsed.videoId], apiKey)
         onAddClips([toClip(parsed.videoId, metadata)], metadata)
+        setUnplayable(findUnplayable([parsed.videoId], metadata))
       } else {
         const videoIds = await fetchPlaylistVideoIds(parsed.playlistId, apiKey)
         const metadata = await fetchVideoMetadata(videoIds, apiKey)
         const clips = videoIds.map((videoId) => toClip(videoId, metadata))
         onLoadPlaylist(clips, metadata)
+        setUnplayable(findUnplayable(videoIds, metadata))
       }
       setUrl('')
     } catch (e) {
@@ -60,6 +72,21 @@ export default function AddClipInput({ apiKey, onAddClips, onLoadPlaylist }) {
         </button>
       </div>
       {error && <p role="alert">{error}</p>}
+      {unplayable.length > 0 && (
+        <div role="status" className="add-clip-warning">
+          <p>
+            ⚠ {unplayable.length === 1 ? "1 video can't" : `${unplayable.length} videos can't`} be played here
+            and will be flagged in the list:
+          </p>
+          <ul>
+            {unplayable.map(({ videoId, title, problem }) => (
+              <li key={videoId}>
+                {title} — {problem}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </form>
   )
 }

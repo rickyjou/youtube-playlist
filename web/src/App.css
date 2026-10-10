@@ -58,6 +58,16 @@ body {
   padding: 4px 0;
 }
 
+.clip-error-icon {
+  color: var(--color-accent);
+  cursor: help;
+}
+
+.add-clip-warning {
+  color: var(--color-accent);
+  font-size: 0.9em;
+}
+
 .clip-row {
   display: flex;
   flex-wrap: wrap;

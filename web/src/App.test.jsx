@@ -1,14 +1,15 @@
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { vi } from 'vitest'
 import App from './App.jsx'
 import * as youtubeApi from './lib/youtubeApi.js'
 
 vi.mock('./components/YouTubePlayer.jsx', () => ({
-  default: ({ videoId, start, onEnded, autoplayToken }) => (
-    <div data-testid="player" data-autoplay-token={autoplayToken} data-start={start}>
+  default: ({ videoId, start, onEnded, onError, autoplayToken }) => (
+    <div data-testid="player" data-autoplay-token={autoplayToken} data-start={start} data-has-on-error={String(Boolean(onError))}>
       {videoId}
       <button onClick={onEnded}>simulate ended</button>
+      <button onClick={() => onError?.(videoId, 150)}>simulate embed error</button>
     </div>
   ),
 }))
@@ -551,5 +552,25 @@ describe('App', () => {
     render(<App />)
 
     expect(youtubeApi.fetchVideoMetadata).not.toHaveBeenCalled()
+  })
+
+  it('flags the playing clip in the editor list when the player reports it cannot be embedded', () => {
+    render(<App />)
+    expect(screen.queryByRole('img', { name: 'Embedding disabled by the owner' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('simulate embed error'))
+
+    const rows = screen.getAllByRole('listitem')
+    expect(within(rows[0]).getByRole('img', { name: 'Embedding disabled by the owner' })).toBeInTheDocument()
+    expect(within(rows[1]).queryByRole('img', { name: 'Embedding disabled by the owner' })).not.toBeInTheDocument()
+  })
+
+  it('does not track player errors on a shared playlist page', () => {
+    const encoded = btoa(JSON.stringify([{ videoId: 'sharedvid01', start: 0, end: 20 }]))
+    window.history.pushState({}, '', `/?playlist=${encoded}`)
+
+    render(<App />)
+
+    expect(screen.getByTestId('player')).toHaveAttribute('data-has-on-error', 'false')
   })
 })

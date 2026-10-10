@@ -13,6 +13,7 @@ describe('fetchVideoMetadata', () => {
           id: 'abc123',
           snippet: { title: 'Test Video', thumbnails: { default: { url: 'https://img/abc123.jpg' } } },
           contentDetails: { duration: 'PT1M5S' },
+          status: { embeddable: true },
         },
       ],
     }
@@ -24,8 +25,39 @@ describe('fetchVideoMetadata', () => {
     const result = await fetchVideoMetadata(['abc123'], 'test-key')
 
     expect(result).toEqual({
-      abc123: { title: 'Test Video', thumbnail: 'https://img/abc123.jpg', durationSeconds: 65 },
+      abc123: { title: 'Test Video', thumbnail: 'https://img/abc123.jpg', durationSeconds: 65, embeddable: true },
     })
+  })
+
+  it('requests the status part and records videos whose owner disabled embedding', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        items: [{
+          id: 'noembed',
+          snippet: { title: 'No Embed', thumbnails: {} },
+          contentDetails: { duration: 'PT10S' },
+          status: { embeddable: false },
+        }],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await fetchVideoMetadata(['noembed'], 'test-key')
+
+    expect(fetchMock.mock.calls[0][0]).toContain('part=snippet,contentDetails,status')
+    expect(result.noembed.embeddable).toBe(false)
+  })
+
+  it('marks requested videos the API did not return (deleted or private) as unavailable', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ items: [] }),
+    }))
+
+    const result = await fetchVideoMetadata(['gone123'], 'test-key')
+
+    expect(result).toEqual({ gone123: { unavailable: true } })
   })
 
   it('batches requests in groups of 50 video IDs', async () => {
@@ -48,7 +80,7 @@ describe('fetchVideoMetadata', () => {
 
     expect(fetch).toHaveBeenCalledTimes(3)
     pending.forEach((resolve) => resolve({ ok: true, json: () => Promise.resolve({ items: [] }) }))
-    await expect(result).resolves.toEqual({})
+    await expect(result).resolves.toHaveProperty('id119', { unavailable: true })
   })
 
   it('throws when the API responds with an error status', async () => {

@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { formatTime } from '../lib/time.js'
+import { describeClipProblem } from '../lib/playbackProblems.js'
 
 function secondsToParts(totalSeconds) {
   const safeSeconds = Number.isFinite(totalSeconds) && totalSeconds > 0 ? totalSeconds : 0
@@ -58,13 +59,19 @@ function TimeField({ label, totalSeconds, onChange, resetTo = 0 }) {
 
 // Memoized so typing in one row's time field doesn't re-render every other row;
 // callers must pass stable callbacks for that to hold.
-const ClipRow = memo(function ClipRow({ index, clip, meta, isPlaying, isLast, onUpdateClip, onDeleteClip, onMoveClip }) {
+const ClipRow = memo(function ClipRow({ index, clip, meta, playerError, isPlaying, isLast, onUpdateClip, onDeleteClip, onMoveClip }) {
   const title = meta?.title ?? clip.videoId
+  const problem = describeClipProblem(meta, playerError)
   return (
     <li className={isPlaying ? 'playing' : ''}>
       <div className="clip-row">
         <span className="clip-index">{index + 1}.</span>
         {meta?.thumbnail && <img src={meta.thumbnail} alt="" width="60" height="45" loading="lazy" />}
+        {problem && (
+          <span className="clip-error-icon" role="img" aria-label={problem} title={problem}>
+            ⚠
+          </span>
+        )}
         <span className="clip-title" title={title}>
           {title}
         </span>
@@ -109,6 +116,7 @@ export default function PlaylistView({
   playlist,
   currentIndex,
   metadata,
+  playbackErrors = {},
   totalSeconds,
   onUpdateClip,
   onDeleteClip,
@@ -123,6 +131,7 @@ export default function PlaylistView({
             index={index}
             clip={clip}
             meta={metadata[clip.videoId]}
+            playerError={playbackErrors[clip.videoId]}
             isPlaying={index === currentIndex}
             isLast={index === playlist.length - 1}
             onUpdateClip={onUpdateClip}

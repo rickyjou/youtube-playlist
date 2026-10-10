@@ -44,6 +44,8 @@ export default function App() {
   const [isSharedView] = useState(initialState.isSharedView)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [metadata, setMetadata] = useState({})
+  // videoId -> YouTube player error code, for clips that failed to play in the editor.
+  const [playbackErrors, setPlaybackErrors] = useState({})
   const [theme, setTheme] = useState(getStoredTheme)
   const [autoplayToken, setAutoplayToken] = useState(0)
   // Where to start a clip when the countdown fired late: { index, start }. Cleared as soon as playback moves to another clip.
@@ -184,6 +186,10 @@ export default function App() {
     setCurrentIndex(0)
   }
 
+  function handlePlayerError(videoId, code) {
+    setPlaybackErrors((current) => (current[videoId] === code ? current : { ...current, [videoId]: code }))
+  }
+
   function handleEnded() {
     setJoinPosition(null)
     setCurrentIndex((current) => current + 1)
@@ -230,6 +236,7 @@ export default function App() {
       start={joinPosition?.index === currentIndex ? joinPosition.start : currentClip.start}
       end={currentClip.end}
       onEnded={handleEnded}
+      onError={isSharedView ? undefined : handlePlayerError}
       disableNativeFullscreen={isSharedView}
       autoplayToken={autoplayToken}
     />
@@ -304,6 +311,7 @@ export default function App() {
               playlist={playlist}
               currentIndex={currentIndex}
               metadata={metadata}
+              playbackErrors={playbackErrors}
               totalSeconds={totalSeconds}
               onUpdateClip={handleUpdateClip}
               onDeleteClip={handleDeleteClip}

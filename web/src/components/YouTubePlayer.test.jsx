@@ -95,6 +95,27 @@ describe('YouTubePlayer', () => {
     expect(onEnded).toHaveBeenCalled()
   })
 
+  it('reports a player error with the current video id and error code', async () => {
+    const onError = vi.fn()
+    const { rerender } = render(<YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} />)
+    await waitFor(() => expect(PlayerMock).toHaveBeenCalledTimes(1))
+
+    // The handler is wired at mount; it must still reach the latest props.
+    rerender(<YouTubePlayer videoId="xyz789" start={0} end={30} onEnded={() => {}} onError={onError} />)
+    const [, config] = PlayerMock.mock.calls[0]
+    config.events.onError({ data: 150 })
+
+    expect(onError).toHaveBeenCalledWith('xyz789', 150)
+  })
+
+  it('tolerates a player error when no onError handler is given', async () => {
+    render(<YouTubePlayer videoId="abc123" start={5} end={50} onEnded={() => {}} />)
+    await waitFor(() => expect(PlayerMock).toHaveBeenCalledTimes(1))
+
+    const [, config] = PlayerMock.mock.calls[0]
+    expect(() => config.events.onError({ data: 101 })).not.toThrow()
+  })
+
   it('ignores an ENDED event that fires immediately after loading a clip', async () => {
     const onEnded = vi.fn()
     render(<YouTubePlayer videoId="abc123" start={5} end={50} onEnded={onEnded} />)

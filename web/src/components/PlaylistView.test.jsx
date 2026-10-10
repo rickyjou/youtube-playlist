@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import PlaylistView from './PlaylistView.jsx'
 
@@ -19,6 +19,7 @@ function renderView(overrides = {}) {
       playlist={playlist}
       currentIndex={0}
       metadata={{}}
+      playbackErrors={{}}
       totalSeconds={90}
       {...handlers}
     />
@@ -139,5 +140,29 @@ describe('PlaylistView', () => {
     const downButtons = screen.getAllByText('↓')
     expect(upButtons[0]).toBeDisabled()
     expect(downButtons[1]).toBeDisabled()
+  })
+
+  it('flags a clip whose video failed to play with an icon whose hover text names the reason', () => {
+    renderView({ playbackErrors: { b: 150 } })
+    const rows = screen.getAllByRole('listitem')
+
+    const icon = within(rows[1]).getByRole('img', { name: 'Embedding disabled by the owner' })
+    expect(icon).toHaveAttribute('title', 'Embedding disabled by the owner')
+    expect(within(rows[0]).queryByRole('img', { name: /embedding/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('flags a clip before playback when its metadata says it cannot be embedded', () => {
+    renderView({ metadata: { a: { title: 'A', embeddable: false } } })
+    const rows = screen.getAllByRole('listitem')
+
+    expect(within(rows[0]).getByRole('img', { name: 'Embedding disabled by the owner' })).toBeInTheDocument()
+  })
+
+  it('flags a clip whose video the Data API could not find', () => {
+    renderView({ metadata: { b: { unavailable: true } } })
+    const rows = screen.getAllByRole('listitem')
+
+    expect(within(rows[1]).getByRole('img', { name: 'Video not found or private' })).toBeInTheDocument()
   })
 })

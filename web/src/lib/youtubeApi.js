@@ -25,7 +25,7 @@ function chunk(array, size) {
 export async function fetchVideoMetadata(videoIds, apiKey) {
   const batches = await Promise.all(
     chunk(videoIds, 50).map(async (batch) => {
-      const url = `${API_BASE}/videos?part=snippet,contentDetails&id=${batch.join(',')}&key=${apiKey}`
+      const url = `${API_BASE}/videos?part=snippet,contentDetails,status&id=${batch.join(',')}&key=${apiKey}`
       const response = await fetch(url)
       assertOk(response)
       const data = await response.json()
@@ -38,7 +38,12 @@ export async function fetchVideoMetadata(videoIds, apiKey) {
       title: item.snippet.title,
       thumbnail: item.snippet.thumbnails?.default?.url ?? '',
       durationSeconds: parseIsoDuration(item.contentDetails.duration),
+      embeddable: item.status?.embeddable,
     }
+  }
+  // The API silently omits deleted and private videos.
+  for (const id of videoIds) {
+    if (!(id in metadata)) metadata[id] = { unavailable: true }
   }
   return metadata
 }

@@ -68,4 +68,43 @@ describe('AddClipInput', () => {
     expect(screen.queryByLabelText(/start/i)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/end/i)).not.toBeInTheDocument()
   })
+
+  it('warns which added videos cannot be played here, while still adding them', async () => {
+    youtubeApi.fetchPlaylistVideoIds.mockResolvedValue(['v1', 'v2', 'v3'])
+    youtubeApi.fetchVideoMetadata.mockResolvedValue({
+      v1: { title: 'One', thumbnail: '', durationSeconds: 60, embeddable: true },
+      v2: { title: 'Two', thumbnail: '', durationSeconds: 90, embeddable: false },
+      v3: { unavailable: true },
+    })
+    const onLoadPlaylist = vi.fn()
+    render(<AddClipInput apiKey="test-key" onAddClips={vi.fn()} onLoadPlaylist={onLoadPlaylist} />)
+
+    fireEvent.change(screen.getByLabelText('YouTube link'), {
+      target: { value: 'https://www.youtube.com/playlist?list=PLxyz' },
+    })
+    fireEvent.click(screen.getByText('Add'))
+
+    await waitFor(() => expect(onLoadPlaylist).toHaveBeenCalled())
+    const warning = screen.getByRole('status')
+    expect(warning).toHaveTextContent("2 videos can't be played here")
+    expect(warning).toHaveTextContent('Two — Embedding disabled by the owner')
+    expect(warning).toHaveTextContent('v3 — Video not found or private')
+    expect(warning).not.toHaveTextContent('One')
+  })
+
+  it('shows no warning when every added video is playable', async () => {
+    youtubeApi.fetchVideoMetadata.mockResolvedValue({
+      abc12345678: { title: 'Test', thumbnail: '', durationSeconds: 120, embeddable: true },
+    })
+    const onAddClips = vi.fn()
+    render(<AddClipInput apiKey="test-key" onAddClips={onAddClips} onLoadPlaylist={vi.fn()} />)
+
+    fireEvent.change(screen.getByLabelText('YouTube link'), {
+      target: { value: 'https://www.youtube.com/watch?v=abc12345678' },
+    })
+    fireEvent.click(screen.getByText('Add'))
+
+    await waitFor(() => expect(onAddClips).toHaveBeenCalled())
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
 })

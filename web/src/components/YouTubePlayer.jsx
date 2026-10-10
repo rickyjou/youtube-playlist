@@ -23,11 +23,14 @@ function loadYouTubeIframeApi() {
   return iframeApiPromise
 }
 
-export default function YouTubePlayer({ videoId, start, end, onEnded, disableNativeFullscreen, autoplayToken }) {
+export default function YouTubePlayer({ videoId, start, end, onEnded, onError, disableNativeFullscreen, autoplayToken }) {
   const containerRef = useRef(null)
   const playerRef = useRef(null)
   const clipRef = useRef({ videoId, start, end })
   clipRef.current = { videoId, start, end }
+  // The player's event handlers are bound once at mount, so read the latest callback through a ref.
+  const onErrorRef = useRef(onError)
+  onErrorRef.current = onError
   const hasEndedRef = useRef(false)
   const loadedAtRef = useRef(0)
   const hasPlayedRef = useRef(false)
@@ -105,6 +108,7 @@ export default function YouTubePlayer({ videoId, start, end, onEnded, disableNat
             }
           },
           onAutoplayBlocked: () => handleAutoplayBlocked(),
+          onError: (event) => onErrorRef.current?.(clipRef.current.videoId, event.data),
           onStateChange: (event) => {
             if (event.data === YT.PlayerState.PLAYING) {
               hasPlayedRef.current = true
