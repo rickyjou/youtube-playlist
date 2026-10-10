@@ -29,4 +29,8 @@ describe('describeClipProblem', () => {
   it('prefers the actual player error over the metadata guess', () => {
     expect(describeClipProblem({ embeddable: true }, 100)).toBe('Video not found or private')
   })
+
+  it('ignores a non-numeric error value, such as an inherited object property', () => {
+    expect(describeClipProblem(undefined, ({}).constructor)).toBeNull()
+  })
 })

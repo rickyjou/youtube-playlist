@@ -86,7 +86,7 @@ export default function App() {
     if (isSharedView) return
     const requested = requestedMetadataIdsRef.current
     const missingIds = [...new Set(playlist.map((clip) => clip.videoId))].filter(
-      (id) => !(id in metadata) && !requested.has(id),
+      (id) => !Object.prototype.hasOwnProperty.call(metadata, id) && !requested.has(id),
     )
     if (missingIds.length === 0) return
     missingIds.forEach((id) => requested.add(id))

@@ -8,7 +8,7 @@ function toClip(videoId, metadata) {
 }
 
 function findUnplayable(videoIds, metadata) {
-  return videoIds.flatMap((videoId) => {
+  return [...new Set(videoIds)].flatMap((videoId) => {
     const problem = describeClipProblem(metadata[videoId])
     return problem ? [{ videoId, title: metadata[videoId]?.title ?? videoId, problem }] : []
   })

@@ -13,7 +13,7 @@ const PLAYER_ERROR_MESSAGES = {
 // Why a clip can't play in the embedded player, or null if nothing is known to
 // be wrong. A real player error beats the Data API's guess from metadata.
 export function describeClipProblem(meta, playerErrorCode) {
-  if (playerErrorCode !== undefined) {
+  if (typeof playerErrorCode === 'number') {
     return PLAYER_ERROR_MESSAGES[playerErrorCode] ?? `Can't be played here (error ${playerErrorCode})`
   }
   if (meta?.unavailable) return NOT_FOUND

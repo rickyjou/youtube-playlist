@@ -43,7 +43,7 @@ export async function fetchVideoMetadata(videoIds, apiKey) {
   }
   // The API silently omits deleted and private videos.
   for (const id of videoIds) {
-    if (!(id in metadata)) metadata[id] = { unavailable: true }
+    if (!Object.prototype.hasOwnProperty.call(metadata, id)) metadata[id] = { unavailable: true }
   }
   return metadata
 }

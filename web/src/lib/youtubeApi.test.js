@@ -60,6 +60,18 @@ describe('fetchVideoMetadata', () => {
     expect(result).toEqual({ gone123: { unavailable: true } })
   })
 
+  it('marks a missing video unavailable even when its id matches a built-in object property', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ items: [] }),
+    }))
+
+    const result = await fetchVideoMetadata(['constructor'], 'test-key')
+
+    expect(Object.prototype.hasOwnProperty.call(result, 'constructor')).toBe(true)
+    expect(result.constructor).toEqual({ unavailable: true })
+  })
+
   it('batches requests in groups of 50 video IDs', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ items: [] }) })
     vi.stubGlobal('fetch', fetchMock)

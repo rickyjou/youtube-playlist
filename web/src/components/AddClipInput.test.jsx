@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import AddClipInput from './AddClipInput.jsx'
 import * as youtubeApi from '../lib/youtubeApi.js'
@@ -106,5 +106,21 @@ describe('AddClipInput', () => {
 
     await waitFor(() => expect(onAddClips).toHaveBeenCalled())
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('lists a video only once in the warning when a playlist contains it twice', async () => {
+    youtubeApi.fetchPlaylistVideoIds.mockResolvedValue(['dup', 'dup'])
+    youtubeApi.fetchVideoMetadata.mockResolvedValue({ dup: { title: 'Dup', embeddable: false } })
+    const onLoadPlaylist = vi.fn()
+    render(<AddClipInput apiKey="test-key" onAddClips={vi.fn()} onLoadPlaylist={onLoadPlaylist} />)
+
+    fireEvent.change(screen.getByLabelText('YouTube link'), {
+      target: { value: 'https://www.youtube.com/playlist?list=PLxyz' },
+    })
+    fireEvent.click(screen.getByText('Add'))
+
+    await waitFor(() => expect(onLoadPlaylist).toHaveBeenCalled())
+    expect(within(screen.getByRole('status')).getAllByRole('listitem')).toHaveLength(1)
+    expect(screen.getByRole('status')).toHaveTextContent("1 video can't be played here")
   })
 })
