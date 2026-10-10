@@ -25,6 +25,25 @@ The `videoId` is EHpxi7khHb0
 
 Update (2025-02-20): Added a function to add new entry, so you don't need to do the calculation yourself.
 
+## Where your playlist is saved
+The playlist you build in the editor is saved in your browser, so it survives a page refresh. The two demo videos only show on your first visit, or after the saved playlist is cleared. Opening a shared link shows that link's playlist and never overwrites your saved one.
+
+It is stored in the browser's **localStorage**, not in a cookie. Nothing is sent to any server, it doesn't expire, and it lives only in that one browser: a different browser, device, or private window starts fresh.
+
+- Site: `https://rickyjou.github.io` (or `http://localhost:5183` when running locally)
+- Key `playlist`: the playlist as JSON, e.g. `[{"videoId":"gUSWWqnOKt0","start":7,"end":140}]`
+- Key `theme`: your light/dark choice
+
+To view it, open DevTools:
+- Chrome / Edge: **Application** tab → Storage → Local storage → `https://rickyjou.github.io`
+- Firefox: **Storage** tab → Local Storage
+- Safari: Develop → Show Web Inspector → **Storage** tab → Local Storage
+- Any browser's console: `localStorage.getItem('playlist')`
+
+To reset to the demo playlist, run `localStorage.removeItem('playlist')` in the console (or clear the site's data), then reload.
+
+Note: localStorage belongs to the whole `rickyjou.github.io` origin, not just `/youtube-playlist/`, so another GitHub Pages project on the same account could read or overwrite the `playlist` and `theme` keys.
+
 ## Known bug
 If when you are playing the video and you accidentally click outside the time range. For example, your video is to play from 3:15 to 3:30, but you accidentally click 4:15 of the video, you can only play to the end to have the next video loaded.
 
